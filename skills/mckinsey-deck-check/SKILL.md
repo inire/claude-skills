@@ -15,7 +15,7 @@ description: >
 # McKinsey Deck Checker
 
 Audits a PowerPoint presentation against McKinsey's Hypothesis-Driven Framework
-and Pyramid Principle across 10 dimensions. Produces a ranked, prioritized issue
+and Pyramid Principle across 11 dimensions. Produces a ranked, prioritized issue
 plan, waits for user approval, then executes or adjusts.
 
 ---
@@ -38,7 +38,7 @@ rough structure.
 
 ---
 
-## Step 1 — Run the 10-Dimension Audit
+## Step 1 — Run the 11-Dimension Audit
 
 Evaluate every slide against all dimensions below. Rate each: **PASS**, **WARN**,
 or **FAIL**, with a specific finding and slide reference.
@@ -131,11 +131,54 @@ or **FAIL**, with a specific finding and slide reference.
 - Font sizes consistent at same hierarchy level
 - **Red flag:** Passive voice throughout. Topic-label titles. Inconsistent number formats.
 
+### Dimension 11 — Brevity and Simplicity
+*"The best slide is the one you cut"*
+
+McKinsey's most visible discipline: one idea per slide, ruthless editing, and
+a preference for a chart over five bullets. Density is a symptom of unfinished
+thinking — if the analyst had synthesized, they'd need fewer words.
+
+**Mechanical checks** (run against extracted text):
+
+| Signal | Threshold | Flag |
+|--------|-----------|------|
+| Words per slide | >150 words | WARN |
+| Words per slide | >250 words | FAIL |
+| Bullets per slide | >6 bullets | WARN |
+| Sub-bullet depth | >2 levels | WARN |
+| Slide title length | >18 words | WARN (title has become a paragraph) |
+| Body slide count (pre-appendix) | >15 slides with no appendix | WARN |
+
+To count words per slide from extracted text, tally word count in each slide
+section of the markitdown output. Flag any slides that breach thresholds above.
+
+**Judgment checks** (assess as you read):
+
+- Does each slide carry exactly **one governing idea**? If you can write two
+  different titles and both apply, the slide needs to be split.
+- Would the deck's argument weaken if any slide were removed? If not, the slide
+  should be cut or moved to appendix.
+- Are bullets **complete-thought assertions** or noun-phrase fragments?
+  ("Revenue declining due to enterprise churn" vs. "Revenue headwinds")
+- Does a body/appendix structure exist? Supporting data, methodology, and edge
+  cases belong in appendix — the body should feel like 8–12 clean slides.
+- Is there a chart or visual that could replace text? Text-heavy slides usually
+  mean the analysis isn't finished.
+
+**Connection to Dimension 6 (Pyramid Principle):** Density violations are
+often logic violations. A slide with 8 bullets typically means the argument on
+that slide isn't resolved — the analyst is listing instead of concluding. When
+a Dimension 11 density flag fires, check whether the root cause is a Dimension 6
+synthesis failure and call out both.
+
+**Red flag:** Any slide that reads like a Word document transplanted onto a
+slide. The analyst's job is to have done the thinking so the reader doesn't have to.
+
 ---
 
 ## Step 2 — Build and Present the Issue Plan
 
-After completing all 10 dimensions, produce this exact output and **stop**. Do
+After completing all 11 dimensions, produce this exact output and **stop**. Do
 not make any changes yet. Wait for user response.
 
 ```
@@ -254,6 +297,15 @@ When scanning for number issues, look specifically for:
 - Period mismatches (Q3 2024 vs FY2024 vs YTD)
 - Percentages that should sum to 100% but do not
 - Growth rates that do not reconcile with base and end values
+
+### Brevity Thresholds (Dimension 11)
+| Metric | WARN | FAIL |
+|--------|------|------|
+| Words per slide | >150 | >250 |
+| Bullets per slide | >6 | — |
+| Sub-bullet depth | >2 levels | — |
+| Title word count | >18 words | — |
+| Body slides (no appendix) | >15 | — |
 
 ---
 
