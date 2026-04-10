@@ -26,42 +26,6 @@ Produces a ranked issue plan (Critical / Important / Polish), waits for approval
 
 ---
 
-### [`storytelling-deck-checker`](skills/storytelling-deck-checker/SKILL.md)
-
-Audits a PowerPoint presentation against the **Storyteller Tactics** framework by Steve Rawling (Pip Decks) across 10 narrative dimensions:
-
-1. Audience Clarity
-2. Story Hook
-3. The Dragon & The City
-4. Conflict & Stakes
-5. Story Arc (Recipe Beats)
-6. Hero & Guide Role
-7. Movie Time (Vivid Moments)
-8. Three is the Magic Number
-9. Show & Tell Balance
-10. Ending & Call to Action
-
-Starts by asking you to choose a **story recipe** — the arc that gates the entire audit and shapes every fix:
-
-| # | Recipe | Best for |
-|---|--------|----------|
-| 1 | Man in a Hole | Rescue / recovery / comeback |
-| 2 | No Easy Way | Complex change or transformation |
-| 3 | Rags to Riches | Hidden value / underdog / discovery |
-| 4 | Voyage & Return | Research, exploration, lessons learned |
-| 5 | Pitch Perfect POPP | Sales pitch / proposal / funding ask |
-| 6 | Let Me Explain | Education, how-to, onboarding |
-| 7 | Campfire Story | Culture, values, internal comms |
-| 8 | Public Speaking Arc | Keynote / conference / TED-style |
-
-Not sure which recipe fits? Say "help me choose" — the skill reads the deck and recommends one with rationale before proceeding.
-
-Produces a ranked issue plan (Critical / Important / Polish), waits for approval, then rewrites slides directly in the PPTX — with speaker notes on every modified slide explaining which tactic was applied and why.
-
-**Triggers:** `/storytelling-deck-checker`, "check if my deck tells a story", "review my presentation for storytelling", "does my deck hook the audience", "make my slides more compelling"
-
----
-
 ### [`rimworld-log-check`](skills/rimworld-log-check/SKILL.md)
 
 Analyzes RimWorld HugsLib `output_log.txt` / `player.log` files to diagnose mod conflicts, crashes, exceptions, and warnings. Names the responsible mods wherever identifiable.
