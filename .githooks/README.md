@@ -31,3 +31,21 @@ git commit --no-verify
 ```
 
 Use the bypass sparingly. The whole point of the hook is to make drift expensive.
+
+#### Optional: `skills-ref` spec validation
+
+If [`skills-ref`](https://github.com/agentskills/agentskills) is installed, the hook also validates every changed `SKILL.md` against the agentskills.io specification (frontmatter schema, name/directory match, description length, etc.) and blocks the commit on any violation.
+
+Install with pipx:
+
+```bash
+pipx install "git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref"
+```
+
+Or with uv:
+
+```bash
+uv tool install "git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref"
+```
+
+If `skills-ref` is not on `PATH`, the hook prints a warning and lets the commit through — so README-only changes still work on machines without the tool. Install it locally if you want the safety net, or rely on CI / another contributor to catch spec drift.
