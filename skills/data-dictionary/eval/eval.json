@@ -1,0 +1,167 @@
+[
+  {
+    "id": "trigger-01-explicit-build",
+    "bucket": "trigger",
+    "description": "Explicit 'build a data dictionary' request with file should activate skill",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "contains", "value": "field_name" },
+      { "type": "contains", "value": "notes" },
+      { "type": "not_contains", "value": "I don't have access" }
+    ]
+  },
+  {
+    "id": "trigger-02-document-my-data",
+    "bucket": "trigger",
+    "description": "Phrase 'document my data' should activate skill",
+    "input": "Can you document my data? Schema attached.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "contains", "value": "field_name" },
+      { "type": "contains", "value": "type" }
+    ]
+  },
+  {
+    "id": "trigger-03-analyze-not-document",
+    "bucket": "trigger",
+    "description": "'Analyze this CSV' should NOT activate data-dictionary skill",
+    "input": "Analyze this CSV and tell me what's interesting.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "not_contains", "value": "| field_name |" },
+      { "type": "not_contains", "value": "Notes Policy" }
+    ]
+  },
+  {
+    "id": "trigger-04-clean-not-document",
+    "bucket": "trigger",
+    "description": "'Clean this data' should NOT activate data-dictionary skill",
+    "input": "Clean this data for me — remove duplicates and fix the dates.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "not_contains", "value": "| field_name |" },
+      { "type": "not_contains", "value": "Inferred — needs confirmation" }
+    ]
+  },
+  {
+    "id": "notes-01-no-blank-cells",
+    "bucket": "notes_policy",
+    "description": "No row should have an empty notes cell (blank between pipes)",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "regex", "value": "^(?!.*\\|\\s*\\|\\s*$).*$", "flags": "multiline", "applies_to": "table_rows" },
+      { "type": "not_contains", "value": "|  |  |  |" }
+    ]
+  },
+  {
+    "id": "notes-02-messy-field-flagged",
+    "bucket": "notes_policy",
+    "description": "Known typo in status column should produce an 'Inferred' flag",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/messy_status.csv",
+    "assertions": [
+      { "type": "contains", "value": "Inferred" },
+      { "type": "contains", "value": "Pendng" }
+    ]
+  },
+  {
+    "id": "notes-03-mixed-type-flagged",
+    "bucket": "notes_policy",
+    "description": "Integer column contaminated with 'N/A' should be typed text and noted",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/mixed_types.csv",
+    "assertions": [
+      { "type": "contains", "value": "N/A" },
+      { "type": "regex", "value": "age.*\\|.*text" }
+    ]
+  },
+  {
+    "id": "notes-04-null-vs-zero",
+    "bucket": "notes_policy",
+    "description": "Numeric field with nulls should distinguish null from zero in notes",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/mixed_types.csv",
+    "assertions": [
+      { "type": "contains", "value": "null" },
+      { "type": "min_length", "value": 500 }
+    ]
+  },
+  {
+    "id": "label-01-not-equal-fieldname",
+    "bucket": "label_rule",
+    "description": "No label should equal field_name verbatim (case-insensitive, underscore-normalized)",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "custom_check", "name": "label_not_equal_fieldname", "description": "For every table row matching dictionary schema, label.lower().replace(' ','_') != field_name.lower()" }
+    ]
+  },
+  {
+    "id": "label-02-no-vague-labels",
+    "bucket": "label_rule",
+    "description": "Labels should not be generic placeholders",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "not_contains", "value": "| date field |" },
+      { "type": "not_contains", "value": "| id column |" },
+      { "type": "not_contains", "value": "| the name |" }
+    ]
+  },
+  {
+    "id": "label-03-specific-description",
+    "bucket": "label_rule",
+    "description": "Labels should be specific enough to distinguish fields (minimum length check as a proxy)",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "custom_check", "name": "min_label_length", "description": "Every label cell >= 10 characters (proxy for specificity)" }
+    ]
+  },
+  {
+    "id": "output-01-small-inline",
+    "bucket": "output_format",
+    "description": "≤15 fields should produce inline markdown table, no xlsx",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/trigger_small.csv",
+    "assertions": [
+      { "type": "contains", "value": "| field_name |" },
+      { "type": "not_contains", "value": ".xlsx" }
+    ]
+  },
+  {
+    "id": "output-02-medium-table-plus-offer",
+    "bucket": "output_format",
+    "description": "16–50 fields should produce inline table AND offer xlsx",
+    "input": "Build a data dictionary for this file.",
+    "fixture": "fixtures/trigger_medium_30.csv",
+    "assertions": [
+      { "type": "contains", "value": "| field_name |" },
+      { "type": "regex", "value": "(xlsx|Excel|downloadable)" }
+    ]
+  },
+  {
+    "id": "output-03-large-xlsx-only",
+    "bucket": "output_format",
+    "description": "51+ fields should produce xlsx artifact, not a full inline table",
+    "input": "Build a data dictionary for this file.",
+    "fixture": "fixtures/trigger_large.csv",
+    "assertions": [
+      { "type": "contains", "value": ".xlsx" },
+      { "type": "custom_check", "name": "no_full_inline_table", "description": "Response contains fewer than 20 table rows matching the dictionary schema (a partial preview is OK; a full 60-row dump is not)" }
+    ]
+  },
+  {
+    "id": "output-04-sampling-flagged",
+    "bucket": "output_format",
+    "description": "Files >50k rows should explicitly state sample size at top of output",
+    "input": "Build a data dictionary for this CSV.",
+    "fixture": "fixtures/large_rowcount_100k.csv",
+    "assertions": [
+      { "type": "regex", "value": "(sample|sampled|drafted from)" },
+      { "type": "contains", "value": "cardinality" }
+    ]
+  }
+]
