@@ -6,7 +6,7 @@ Custom Claude skills for use with Claude.ai and Claude Code. All skills follow t
 
 ### [`mckinsey-deck-check`](skills/mckinsey-deck-check/SKILL.md)
 
-Audits a PowerPoint presentation against McKinsey's Hypothesis-Driven Framework and Pyramid Principle across 10 dimensions:
+Audits a PowerPoint presentation against McKinsey's Hypothesis-Driven Framework and Pyramid Principle across 11 dimensions:
 
 1. Fact Foundation
 2. Initial Hypothesis
@@ -18,12 +18,11 @@ Audits a PowerPoint presentation against McKinsey's Hypothesis-Driven Framework 
 8. Number Consistency
 9. Data–Narrative Alignment
 10. Language & Formatting Polish
+11. Brevity & Simplicity
 
 Produces a ranked issue plan (Critical / Important / Polish), waits for approval, then executes fixes directly in the PPTX.
 
 **Triggers:** `/mckinsey-deck-check`, "check my deck", "review this presentation", "QC my slides", "is this McKinsey-ready"
-
-**Recent changes:** Simplicity pass — reduced verbosity in instructions, tightened classifier language, removed redundant phase descriptions.
 
 ---
 
@@ -89,6 +88,35 @@ Report sections:
 Supports RimWorld 1.4, 1.5, and 1.6 log formats. Accepts HugsLib Gist URLs, Pastebin links, or direct paste.
 
 **Triggers:** "Can you check my log?", "what's wrong with my mods?", "my game keeps crashing", sharing a `gist.github.com/HugsLibRecordKeeper` URL
+
+---
+
+### [`data-dictionary`](skills/data-dictionary/SKILL.md)
+
+Drafts and iterates a data dictionary from a raw dataset (CSV, Excel, or any tabular file). Produces a per-field reference covering name, label, type, values, source, notes, and transformations — then iterates with the user through structured review passes until every field is confirmed (not inferred).
+
+Standard dictionary columns:
+
+| Column | Purpose |
+|---|---|
+| `field_name` | Exact name as it appears in the data |
+| `label` | Human-readable description — never the field name verbatim |
+| `type` | `text`, `integer`, `decimal`, `date`, `boolean`, `categorical`, `identifier`, `json`/`array` |
+| `values` | Enumerated categorical values, pulled from actual data (not documentation) |
+| `source` | System or form the field comes from |
+| `notes` | Nulls, mixed types, business rules, edge cases — never blank |
+| `transformations` | Formula for derived fields only |
+
+Four-phase workflow with explicit review gates:
+
+1. **Assess inputs** — apply defaults over asking questions; only ask when there's no reasonable default
+2. **Draft v1** — cover every field, flag anything inferred, apply sampling thresholds for files >50k rows
+3. **Iterate** — derived fields, spec validation, naming cleanup — each pass ends with user sign-off
+4. **Final review** — list every inferred field as the user's validation targets, deliver as inline markdown (≤15 fields), markdown + Excel offer (16–50), or Excel only (51+)
+
+Includes a 15-case `eval.json` under `eval/` covering trigger discrimination, notes policy, label rules, and output format gates. Runner and fixtures not yet built — see [`skills/data-dictionary/README.md`](skills/data-dictionary/README.md).
+
+**Triggers:** "build a data dictionary", "document my data", "describe my columns", "draft a dictionary for this dataset", "I need a data dictionary"
 
 ---
 
