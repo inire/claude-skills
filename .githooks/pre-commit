@@ -26,30 +26,74 @@ fi
 # Root README staged alongside?
 readme_changed=$(echo "$staged" | grep -E '^README\.md$' || true)
 
-if [ -n "$readme_changed" ]; then
+# ── README-sync check ──────────────────────────────────────────────
+if [ -z "$readme_changed" ]; then
+  echo "────────────────────────────────────────────────────────────────"
+  echo " pre-commit: SKILL.md changed without root README.md update"
+  echo "────────────────────────────────────────────────────────────────"
+  echo ""
+  echo " Changed skill files:"
+  echo "$skill_changed" | sed 's/^/   • /'
+  echo ""
+  echo " The root README.md is the index for all skills in this repo."
+  echo " When a SKILL.md changes, the README should reflect it — otherwise"
+  echo " the description, dimension count, trigger list, etc. drift out of"
+  echo " sync with what the skill actually does."
+  echo ""
+  echo " Fix:"
+  echo "   1. Update README.md to match the SKILL.md changes"
+  echo "   2. git add README.md"
+  echo "   3. git commit again"
+  echo ""
+  echo " Bypass (use sparingly — only for typo/whitespace/comment changes"
+  echo " that don't affect skill behavior):"
+  echo "   git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+# ── skills-ref spec validation ─────────────────────────────────────
+# Validate every changed skill against the agentskills.io specification.
+# Gracefully skips (with a loud warning) if skills-ref is not installed,
+# so README-only edits still commit on machines without the tool.
+
+if ! command -v skills-ref >/dev/null 2>&1; then
+  echo "──────────────────────────────────────────────────────────────"
+  echo " pre-commit: skills-ref not installed — skipping spec validation"
+  echo "──────────────────────────────────────────────────────────────"
+  echo " Install with:"
+  echo "   pipx install 'git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref'"
+  echo ""
+  echo " (Committing anyway — but you are relying on CI or the next"
+  echo "  contributor to catch spec drift.)"
   exit 0
 fi
 
-# Block.
-echo "────────────────────────────────────────────────────────────────"
-echo " pre-commit: SKILL.md changed without root README.md update"
-echo "────────────────────────────────────────────────────────────────"
-echo ""
-echo " Changed skill files:"
-echo "$skill_changed" | sed 's/^/   • /'
-echo ""
-echo " The root README.md is the index for all skills in this repo."
-echo " When a SKILL.md changes, the README should reflect it — otherwise"
-echo " the description, dimension count, trigger list, etc. drift out of"
-echo " sync with what the skill actually does."
-echo ""
-echo " Fix:"
-echo "   1. Update README.md to match the SKILL.md changes"
-echo "   2. git add README.md"
-echo "   3. git commit again"
-echo ""
-echo " Bypass (use sparingly — only for typo/whitespace/comment changes"
-echo " that don't affect skill behavior):"
-echo "   git commit --no-verify"
-echo ""
-exit 1
+# Force UTF-8 I/O — skills-ref 0.1.0 uses Path.read_text() without
+# specifying encoding, so on Windows it defaults to cp1252 and crashes
+# on any SKILL.md containing non-ASCII content (emojis, em dashes,
+# box-drawing). PYTHONUTF8=1 is Python's UTF-8 Mode and fixes this
+# without patching the tool.
+export PYTHONUTF8=1
+
+failed=0
+while IFS= read -r skill_file; do
+  [ -z "$skill_file" ] && continue
+  skill_dir=$(dirname "$skill_file")
+  if ! skills-ref validate "$skill_dir"; then
+    failed=1
+  fi
+done <<< "$skill_changed"
+
+if [ "$failed" -ne 0 ]; then
+  echo ""
+  echo "────────────────────────────────────────────────────────────────"
+  echo " pre-commit: skills-ref validation failed"
+  echo "────────────────────────────────────────────────────────────────"
+  echo " One or more changed skills violate the agentskills.io spec."
+  echo " Fix the reported issues and re-stage, or bypass with:"
+  echo "   git commit --no-verify"
+  exit 1
+fi
+
+exit 0
