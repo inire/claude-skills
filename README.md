@@ -58,6 +58,8 @@ Not sure which recipe fits? Say "help me choose" — the skill reads the deck an
 
 Produces a ranked issue plan (Critical / Important / Polish), waits for approval, then rewrites slides directly in the PPTX — with speaker notes on every modified slide explaining which tactic was applied and why.
 
+The eight recipe definitions and their beat sequences live in [references/recipes.md](skills/storytelling-deck-checker/references/recipes.md).
+
 **Triggers:** `/storytelling-deck-checker`, "check if my deck tells a story", "review my presentation for storytelling", "does my deck hook the audience", "make my slides more compelling"
 
 ---
