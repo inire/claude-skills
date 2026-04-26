@@ -1,10 +1,24 @@
 # claude-skills
 
-Custom Claude skills for use with Claude.ai and Claude Code. All skills follow the [agentskills.io specification](https://agentskills.io/specification).
+### Agent skills for Claude that actually do things.
+
+[![Skills: 3](https://img.shields.io/badge/skills-3-blue)](skills/)
+[![agentskills.io](https://img.shields.io/badge/spec-agentskills.io-informational)](https://agentskills.io/specification)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-compatible-blueviolet?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
+
+Custom skills for Claude.ai and Claude Code. Each skill follows the [agentskills.io specification](https://agentskills.io/specification) — drop a folder in and Claude gains a new capability.
+
+| Skill | What it does | Triggers |
+|-------|-------------|----------|
+| [`mckinsey-deck-check`](skills/mckinsey-deck-check/SKILL.md) | Audits a PPTX against McKinsey's Hypothesis-Driven Framework across 11 dimensions, then fixes issues in-place | "check my deck", "is this McKinsey-ready" |
+| [`rimworld-log-check`](skills/rimworld-log-check/SKILL.md) | Diagnoses mod conflicts, crashes, and redundancies from HugsLib logs — names the responsible mods | "check my log", sharing a HugsLib Gist URL |
+| [`data-dictionary`](skills/data-dictionary/SKILL.md) | Drafts and iterates a per-field data dictionary from any tabular file through structured review passes | "build a data dictionary", "document my columns" |
+
+---
 
 ## Skills
 
-### [`mckinsey-deck-check`](skills/mckinsey-deck-check/SKILL.md)
+### mckinsey-deck-check
 
 Audits a PowerPoint presentation against McKinsey's Hypothesis-Driven Framework and Pyramid Principle across 11 dimensions:
 
@@ -22,11 +36,7 @@ Audits a PowerPoint presentation against McKinsey's Hypothesis-Driven Framework 
 
 Produces a ranked issue plan (Critical / Important / Polish), waits for approval, then executes fixes directly in the PPTX.
 
-**Triggers:** `/mckinsey-deck-check`, "check my deck", "review this presentation", "QC my slides", "is this McKinsey-ready"
-
----
-
-### [`rimworld-log-check`](skills/rimworld-log-check/SKILL.md)
+### rimworld-log-check
 
 Analyzes RimWorld HugsLib `output_log.txt` / `player.log` files to diagnose mod conflicts, crashes, exceptions, and warnings. Names the responsible mods wherever identifiable.
 
@@ -39,10 +49,8 @@ Performs the same core analysis as [Orion's rw-log-check tool](https://orionFive
   - A curated static Known Redundancy Database (15+ common pairs)
 - Priority-ordered fix list, grouped by impact
 
-Report sections:
-
 | Section | Content |
-|---|---|
+|---------|---------|
 | 🔴 Exceptions | Code-halting errors with stack trace attribution |
 | 🟠 Startup errors | Broken def references, XML issues, missing types |
 | 🟡 Runtime warnings | NQoL patch failures, Harmony conflicts, version changes |
@@ -51,18 +59,14 @@ Report sections:
 
 Supports RimWorld 1.4, 1.5, and 1.6 log formats. Accepts HugsLib Gist URLs, Pastebin links, or direct paste.
 
-**Triggers:** "Can you check my log?", "what's wrong with my mods?", "my game keeps crashing", sharing a `gist.github.com/HugsLibRecordKeeper` URL
-
----
-
-### [`data-dictionary`](skills/data-dictionary/SKILL.md)
+### data-dictionary
 
 Drafts and iterates a data dictionary from a raw dataset (CSV, Excel, or any tabular file). Produces a per-field reference covering name, label, type, values, source, notes, and transformations — then iterates with the user through structured review passes until every field is confirmed (not inferred).
 
 Standard dictionary columns:
 
 | Column | Purpose |
-|---|---|
+|--------|---------|
 | `field_name` | Exact name as it appears in the data |
 | `label` | Human-readable description — never the field name verbatim |
 | `type` | `text`, `integer`, `decimal`, `date`, `boolean`, `categorical`, `identifier`, `json`/`array` |
@@ -71,21 +75,23 @@ Standard dictionary columns:
 | `notes` | Nulls, mixed types, business rules, edge cases — never blank |
 | `transformations` | Formula for derived fields only |
 
-Four-phase workflow with explicit review gates:
-
-1. **Assess inputs** — apply defaults over asking questions; only ask when there's no reasonable default
-2. **Draft v1** — cover every field, flag anything inferred, apply sampling thresholds for files >50k rows
-3. **Iterate** — derived fields, spec validation, naming cleanup — each pass ends with user sign-off
-4. **Final review** — list every inferred field as the user's validation targets, deliver as inline markdown (≤15 fields), markdown + Excel offer (16–50), or Excel only (51+)
-
-Includes a 15-case `eval.json` under `eval/` covering trigger discrimination, notes policy, label rules, and output format gates. Runner and fixtures not yet built — see [`skills/data-dictionary/README.md`](skills/data-dictionary/README.md).
-
-**Triggers:** "build a data dictionary", "document my data", "describe my columns", "draft a dictionary for this dataset", "I need a data dictionary"
+Four-phase workflow: assess inputs → draft v1 → iterate with review gates → final review with inferred-field validation targets.
 
 ---
 
-## Installation
+## Install
 
 Download the `.skill` file from [Releases](../../releases) or install by uploading the skill folder via **Claude.ai → Customize → Skills**.
 
-To install from source, clone this repo and point your Claude client at the skill directory (e.g. `skills/rimworld-log-check/`).
+To install from source:
+
+```bash
+git clone https://github.com/inire/claude-skills.git
+# Point your Claude client at any skill directory, e.g. skills/rimworld-log-check/
+```
+
+---
+
+## Built with Claude
+
+These skills were built collaboratively with [Claude](https://claude.ai) (Anthropic). If you're curious what agent skill development looks like in practice, this is a reasonable example.
