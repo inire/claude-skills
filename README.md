@@ -2,7 +2,7 @@
 
 ### Agent skills for Claude that actually do things.
 
-[![Skills: 3](https://img.shields.io/badge/skills-3-blue)](skills/)
+[![Skills: 5](https://img.shields.io/badge/skills-5-blue)](skills/)
 [![agentskills.io](https://img.shields.io/badge/spec-agentskills.io-informational)](https://agentskills.io/specification)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-compatible-blueviolet?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
 
@@ -13,6 +13,8 @@ Custom skills for Claude.ai and Claude Code. Each skill follows the [agentskills
 | [`mckinsey-deck-check`](skills/mckinsey-deck-check/SKILL.md) | Audits a PPTX against McKinsey's Hypothesis-Driven Framework across 11 dimensions, then fixes issues in-place | "check my deck", "is this McKinsey-ready" |
 | [`rimworld-log-check`](skills/rimworld-log-check/SKILL.md) | Diagnoses mod conflicts, crashes, and redundancies from HugsLib logs — names the responsible mods | "check my log", sharing a HugsLib Gist URL |
 | [`data-dictionary`](skills/data-dictionary/SKILL.md) | Drafts and iterates a per-field data dictionary from any tabular file through structured review passes | "build a data dictionary", "document my columns" |
+| [`continuation-prompt`](skills/continuation-prompt/SKILL.md) | Generates a structured handoff doc for the next Claude Code session at milestone close — TL;DR, state, recap, next-scope, open questions, references | "make a continuation prompt", "build a handoff doc", "save context for next session" |
+| [`project-memory-update`](skills/project-memory-update/SKILL.md) | Reconciles a project's auto-memory file at milestone close — surgical edits per section, doesn't lose accumulated history | "update project memory", "reflect this session in memory", "sync project memory" |
 
 ---
 
@@ -76,6 +78,31 @@ Standard dictionary columns:
 | `transformations` | Formula for derived fields only |
 
 Four-phase workflow: assess inputs → draft v1 → iterate with review gates → final review with inferred-field validation targets.
+
+### continuation-prompt
+
+Generates a structured handoff document for the next Claude Code session at the end of a milestone — so a fresh session can pick up immediately without re-reading the whole repo. Designed for multi-version software releases where each continuation prompt becomes the lead-in to the next session.
+
+Saves a markdown file to the project's `docs/` folder structured in 14 sections covering: TL;DR with the next session's first-move A/B/C decision, current branch state, just-shipped recap, next-version scope, architectural new ground, future-versions roadmap, standards to carry forward, open questions, key references, resolved historical issues, what NOT to do, and CLAUDE.md hooks.
+
+Different from a generic README (which describes the project) and different from the auto-memory system (which saves incremental facts). This is a milestone-bookended handoff with a specific shape — written by the session that has full context, read by the session that has none.
+
+### project-memory-update
+
+Reconciles a project's auto-memory file (`~/.claude/projects/<cwd>/memory/project_<name>.md`) at the end of a milestone so it accurately reflects current shipped state. Surgically updates the description frontmatter, current-state section (latest SHA, tag, what shipped), release plan progression, key docs list, architectural highlights, and important reminders — without losing existing content.
+
+Per-section update strategy:
+
+| Section | Strategy |
+|---------|----------|
+| Frontmatter `description` | Replace with new SHA + tag + 1-line summary |
+| Key docs | Append new entries; demote prior "current handoff" to historical |
+| Current state | Replace prior version's recap with the new one |
+| Architectural highlights | Append new patterns; existing entries stay intact |
+| Release plan | Mark just-shipped version ✅; add new future versions if scope shifted |
+| Important reminders | Append new lessons (workspace gotchas, lint issues, spec errors caught) |
+
+Distinguished from the auto-memory system (incremental fact-saves as work happens) and from `anthropic-skills:consolidate-memory` (cross-tree prune/merge). This skill scopes to one project's memory file at milestone close. Uses `Edit` (never `Write`) so accumulated history isn't lost.
 
 ---
 
