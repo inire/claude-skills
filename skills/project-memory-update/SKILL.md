@@ -95,7 +95,7 @@ For each section that needs updating:
 - **Key docs**: append new entries, change the prior "CURRENT handoff" marker to "historical"
 - **Current state**: replace the prior version's recap block. Include shipped items as bullets, acceptance summary, cumulative state count
 - **Architectural highlights**: append new patterns, leave existing bullets intact
-- **Release plan**: change the just-shipped version's marker from ⏳ to ✅, add scope notes
+- **Release plan**: change the just-shipped version's status marker from "pending" to "done" (in projects using the standard convention, that's `⏳` → `✅`); add scope notes
 - **Important reminders**: append new lessons from this milestone
 
 Don't restructure or rewrite sections that haven't changed.

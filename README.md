@@ -99,7 +99,7 @@ Per-section update strategy:
 | Key docs | Append new entries; demote prior "current handoff" to historical |
 | Current state | Replace prior version's recap with the new one |
 | Architectural highlights | Append new patterns; existing entries stay intact |
-| Release plan | Mark just-shipped version ✅; add new future versions if scope shifted |
+| Release plan | Mark just-shipped version as done (e.g., `⏳` → `✅`); add new future versions if scope shifted |
 | Important reminders | Append new lessons (workspace gotchas, lint issues, spec errors caught) |
 
 Distinguished from the auto-memory system (incremental fact-saves as work happens) and from `anthropic-skills:consolidate-memory` (cross-tree prune/merge). This skill scopes to one project's memory file at milestone close. Uses `Edit` (never `Write`) so accumulated history isn't lost.
