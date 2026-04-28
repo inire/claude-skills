@@ -114,7 +114,7 @@ The pipeline itself runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9). T
 | Pass | Pipeline mapping | What this skill does |
 |------|------------------|----------------------|
 | **1 — Pre-intake cleanup** | Pre-Stage 0 | Closes small gaps in the pipeline's `scrub.py` — currency-string sentinels (`' $- '`, `$0`, `-`), column-name whitespace, empty `Unnamed:` columns. Backed by a TDD-tested `prestage_helper.py`. Skip entirely if the export is already clean. |
-| **2 — Dictionary drafting** | Stages 2 + 3 | Composes an answer prompt from the profile, then drafts `dictionary.yaml` against the contract format with a generic question checklist |
+| **2 — Dictionary drafting** | Stages 2 + 3 | Drafts `dictionary.yaml` from the profile output, with a 13-question domain-agnostic checklist for ambiguous semantics (presence flags, scoring rubrics, currency periods, sentinel dates, parallel-column canonicality). Highest-leverage pause point in the workflow. |
 | **3 — Run + interpret** | Stages 4–9 | Wraps install / run / re-run-after-fix with a post-run review checklist mapped to common `SchemaError` patterns |
 | **4 — Optional post-pipeline derivations** | Post-Stage 9 (custom) | Generic Phase-3 derivation patterns (presence flags, ordinal maps, days-since, picklist normalization, composite scoring) when YAML `derived_fields:` isn't expressive enough |
 

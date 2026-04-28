@@ -97,7 +97,66 @@ dictionary-pipeline run --input cleaned.xlsx --contract dictionary.yaml --workdi
 
 ### Pass 2 — Dictionary drafting
 
-(written in task 3.2)
+**This is the highest-leverage point in the workflow.** Five minutes of careful drafting saves hours of iterating on schema failures. Pause here. Show the user the draft and your key decisions before running the rest of the pipeline.
+
+**Prerequisite:** the file has been intaked and profiled. You have `intake_manifest.json` and `profile_summary.json` in the workdir. If not, run:
+
+```bash
+dictionary-pipeline intake  --input cleaned.csv --workdir runs/v1
+dictionary-pipeline profile --workdir runs/v1
+```
+
+**Then hand-draft `dictionary.yaml`** using `assets/dictionary_template.yaml` as the structural reference and `assets/field_types_reference.md` for type/dtype choices. The pipeline's stage 3 is currently a stub — you (the LLM) do the drafting inline, not via a CLI call.
+
+**The discipline (carry over from the [`data-dictionary`](../data-dictionary/SKILL.md) skill):**
+
+1. **Sample 50+ distinct values** for each categorical before locking the `allowed_values` list. The profile's `top_values` only shows the top 5 — call `df['col'].value_counts()` on the full data if cardinality is unclear.
+2. **Mark `review_status: draft`** on any field whose business semantics aren't certain. Never guess and mark `confirmed`. The user catches these on Pass-2 review.
+3. **Notes must explain nulls, sentinels, and known issues.** A blank `notes:` is a code smell — at minimum say "no edge cases observed in sample of N rows."
+4. **Document casing and picklist hygiene.** If you see `PROSPECT-Open` and `PROSPECT- Open` (with a stray space) in the same column, mention it. Don't silently normalize.
+5. **State grain explicitly.** `dataset.grain` is the single most important line — "one row per WHAT?" — because every downstream count is wrong if grain is wrong.
+
+#### Question checklist — ask the user when in doubt
+
+These are domain-agnostic. For any column where the answer isn't obvious from the data:
+
+| # | Pattern | Question |
+|---|---------|----------|
+| 1 | Presence-of-value flag (`X` or blank) | What does the flag mean — has the property, opted in, sent to system, etc.? |
+| 2 | Grade / score / rating column | What's the rubric? Who assigns it? When? |
+| 3 | Currency or amount column | Which currency? What period (annual / monthly / one-time)? Pre-tax or post-tax? |
+| 4 | Count / measurement | Any overflow or floor sentinels (e.g. `10001+` capped at `10001`, `< 10` capped at `10`)? |
+| 5 | Categorical (any cardinality) | What's the source taxonomy — system default, custom org list, external standard (NAICS, ISO, ICD)? Closed or open? |
+| 6 | Column with `(U)`, `(R)`, `_v2` suffix | What does the suffix mean — enriched / redacted / version? |
+| 7 | Two parallel columns disagreeing (raw vs enriched) | Which is canonical for downstream analysis? |
+| 8 | Date column with old sentinel values (`1900-01-01`, `1970-01-01`, `1930-01-19`) | Real dates or epoch-style sentinels? |
+| 9 | High null rate (>30%) | Does null mean "no data captured" or "no record applies here"? |
+| 10 | Identifier-shaped column | Row-level primary key, or a grouping key (one value per N rows)? |
+| 11 | Free text column | Could it contain PII (emails, names, addresses)? Any structured patterns worth pulling out? |
+| 12 | Numeric column declared `Int64` but profile shows decimals | Was integer the intent, or should this be `decimal`? |
+| 13 | Uncertain semantics | If the user can't answer, mark `review_status: draft` and add the question to `notes:` so it surfaces in the deliverable. |
+
+**Don't ask what the user can't know.** If grain, type, or value range can be inferred from the data and the profile, infer it. Only ask when the data genuinely can't resolve the question (carries over from `data-dictionary`).
+
+#### Skip the skill, just give me a prompt
+
+The pipeline repo ships a copy-paste template for this exact handoff:
+
+```
+project_files/new_dataset_prompt.md
+```
+
+If the user prefers a one-shot prompt over a step-by-step skill walkthrough, point them at that file. The skill's Pass-2 protocol is what the prompt expands into when actually executed.
+
+#### After drafting — pause for review
+
+Before running the rest of the pipeline, present:
+
+1. The complete `dictionary.yaml` (or the diff if you iterated)
+2. A short list of the **decisions you made** — especially renames, derivations, and any guess-y `draft` fields
+3. The **questions you flagged** that the user should answer before this becomes `confirmed`
+
+Wait for explicit approval. Then run Pass 3.
 
 ### Pass 3 — Run the pipeline
 
