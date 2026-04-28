@@ -23,7 +23,28 @@ LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dict
 
 ## Quick start (just give me a prompt)
 
-(written in task 4.1)
+If the user wants the work done with minimal back-and-forth and isn't interested in the four-pass protocol, hand them this template — fill the blanks, paste back, done:
+
+```
+I have a new dataset to run through the dictionary-pipeline.
+
+File:        <full path, e.g. D:\AI\Claude\datapipeline_2\export.csv>
+What it is:  <one sentence — what the data represents and where it came from>
+Grain:       <one row per WHAT? e.g. "one row per item per order">
+PII:         <columns with personal data, or "none">
+Quirks:      <preamble rows, footer rows, mixed-currency cols, sentinel dates, or "none that I noticed">
+Workdir:     <a path OUTSIDE any git repo, e.g. D:\AI\Claude\runs\v1>
+
+Run the dictionary-pipeline on this file using the four-pass workflow:
+  1. Pre-intake cleanup if Stage 0 / Stage 4 fails on a raw run
+  2. Intake + profile, then PAUSE and show me the draft dictionary
+  3. After I approve: enforce -> clean -> derive -> validate -> export
+  4. Optional: any Phase-3 derivations I asked for, run on the validated DataFrame
+
+Show me the validation report and a sanity check on grain.
+```
+
+This expands into the protocol below. Anyone who'd rather drive it step-by-step can ignore the prompt and follow the four passes directly.
 
 ## The four-pass workflow
 
@@ -160,7 +181,73 @@ Wait for explicit approval. Then run Pass 3.
 
 ### Pass 3 — Run the pipeline
 
-(written in task 4.1 / 4.2)
+After Pass-2 dictionary review and approval, run Stages 4–9 against the workdir from Pass 2.
+
+#### Install (only if not already installed)
+
+```bash
+python -m pip show dictionary-pipeline >/dev/null 2>&1 \
+  || python -m pip install "git+https://github.com/inire/dictionary-pipeline.git@master#egg=dictionary-pipeline[fuzzy,profiling]"
+```
+
+Optional extras:
+- `[profiling]` — ydata-profiling for the richer Stage-1 HTML report
+- `[fuzzy]` — rapidfuzz for fuzzy near-duplicate detection in Stage 5
+- `[llm]` — Anthropic SDK for Stages 3 / 6 (currently unused — those are stubs; the LLM work happens via this skill instead)
+
+#### Full run
+
+```bash
+dictionary-pipeline run \
+  --input cleaned.xlsx \
+  --contract dictionary.yaml \
+  --workdir runs/v1
+```
+
+If your input is Excel with a non-zero header row, add `--header N`. If it's CSV/TSV, the pipeline auto-detects the header.
+
+#### Per-stage commands (for re-running after a fix)
+
+The pipeline checkpoints to parquet between stages, so a single stage can be re-run without replaying intake + profile:
+
+```bash
+dictionary-pipeline intake   --input file.xlsx --workdir runs/v1
+dictionary-pipeline profile  --workdir runs/v1
+dictionary-pipeline enforce  --workdir runs/v1 --contract dictionary.yaml
+dictionary-pipeline derive   --workdir runs/v1 --contract dictionary.yaml
+dictionary-pipeline export   --workdir runs/v1 --contract dictionary.yaml
+```
+
+Typical iteration loop after a Stage-4 failure:
+1. Edit `dictionary.yaml` (the failure tells you which field and which constraint)
+2. Re-run `enforce`
+3. Re-run `export`
+
+You only re-run `intake` / `profile` when the source file itself changed.
+
+#### Post-run review checklist
+
+Open `runs/v1/validation_report.json` after every successful run and check:
+
+| Check | What to look at | Pass / fail signal |
+|-------|-----------------|--------------------|
+| Schema revalidation | `validation_report.json` → `schema_revalidation` | Must be `"passed"`. Anything else means a stage corrupted the data after Stage 4. |
+| Drift columns | `validation_report.json` → `original_vs_final_diff` | Each entry is a column where rows changed. **Mismatches are expected** when cleaning ran. Look for surprises: columns that shouldn't change, mismatch counts wildly larger than the cleaning rule's intent, or `row_count_changed`. |
+| Transformation log | `transformation_log.jsonl` | Skim for unexpected events. Whitespace strips and type coercions are fine. Aggressive normalization on a column you didn't expect is a flag. |
+| Deliverable opens | `runs/v1/<dataset_name>.xlsx` | All three tabs render in Excel/Numbers/Sheets. Data tab has expected row count and column count. |
+
+#### Common failures → fixes
+
+| Failure (verbatim from `SchemaError` or terminal) | Probable cause | Fix |
+|---------------------------------------------------|----------------|-----|
+| `non-nullable series 'X' contains null values` | Field is `nullable: false` but data has nulls | Either set `nullable: true` with a `null_tolerance: 0.NN`, or add a Stage 5 fill rule, or fix the source |
+| `column 'X' failed isin check` | A categorical value not in `allowed_values` | Add the value, or change `type: categorical` → `categorical_open` if the set is open, or add a Stage 5 lowercase/normalize rule |
+| `dtype mismatch: expected Int64, got object` after coerce | Mixed string + number in a column declared numeric | Run `prestage_helper.py` (currency sentinels) or add a Stage 5 cleaning rule |
+| `column 'X' not in DataFrame` | `source_column` in YAML doesn't match the actual header | Open `intake_manifest.json`, copy the exact header name, paste into `source_column` |
+| `NotImplementedError: unsupported transformation pattern` | Stage 7 derivation uses a pattern outside arithmetic / groupby | Either rewrite to fit the pattern, or move it to Pass 4 (post-pipeline) |
+| `ParserError` / `OutOfBoundsDatetime` on a date column | `parse_format` doesn't match the actual format, or sentinel dates | Inspect a few values; fix `parse_format` or document sentinels in `notes` |
+
+For the full troubleshooting guide, see [`docs/workflow.md`](https://github.com/inire/dictionary-pipeline/blob/master/docs/workflow.md) in the pipeline repo — this skill summarizes; that doc is canonical.
 
 ### Pass 4 — Optional post-pipeline derivations
 
