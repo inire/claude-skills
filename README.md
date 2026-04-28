@@ -2,7 +2,7 @@
 
 ### Agent skills for Claude that actually do things.
 
-[![Skills: 5](https://img.shields.io/badge/skills-5-blue)](skills/)
+[![Skills: 6](https://img.shields.io/badge/skills-6-blue)](skills/)
 [![agentskills.io](https://img.shields.io/badge/spec-agentskills.io-informational)](https://agentskills.io/specification)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-compatible-blueviolet?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
 
@@ -15,6 +15,7 @@ Custom skills for Claude.ai and Claude Code. Each skill follows the [agentskills
 | [`data-dictionary`](skills/data-dictionary/SKILL.md) | Drafts and iterates a per-field data dictionary from any tabular file through structured review passes | "build a data dictionary", "document my columns" |
 | [`continuation-prompt`](skills/continuation-prompt/SKILL.md) | Generates a structured handoff doc for the next Claude Code session at milestone close — TL;DR, state, recap, next-scope, open questions, references | "make a continuation prompt", "build a handoff doc", "save context for next session" |
 | [`project-memory-update`](skills/project-memory-update/SKILL.md) | Reconciles a project's auto-memory file at milestone close — surgical edits per section, doesn't lose accumulated history | "update project memory", "reflect this session in memory", "sync project memory" |
+| [`dictionary-pipeline`](skills/dictionary-pipeline/SKILL.md) | LLM-side companion for the [dictionary-pipeline](https://github.com/inire/dictionary-pipeline) tool — drives the four-pass workflow (pre-intake cleanup → dictionary draft → run → optional post-pipeline derivations) on any messy tabular file | "schema-validate this", "run the dictionary-pipeline", "validate and produce a 3-tab workbook" |
 
 ---
 
@@ -103,6 +104,21 @@ Per-section update strategy:
 | Important reminders | Append new lessons (workspace gotchas, lint issues, spec errors caught) |
 
 Distinguished from the auto-memory system (incremental fact-saves as work happens) and from `anthropic-skills:consolidate-memory` (cross-tree prune/merge). This skill scopes to one project's memory file at milestone close. Uses `Edit` (never `Write`) so accumulated history isn't lost.
+
+### dictionary-pipeline
+
+LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dictionary-pipeline) tool — a pandas-first data-prep pipeline whose data dictionary is a YAML contract that drives schema enforcement, cleaning, derivation, and a 3-tab Excel deliverable.
+
+The pipeline itself runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9). This skill drives the four passes that *aren't* deterministic:
+
+| Pass | Pipeline mapping | What this skill does |
+|------|------------------|----------------------|
+| **1 — Pre-intake cleanup** | Pre-Stage 0 | Closes small gaps in the pipeline's `scrub.py` (currency-string sentinels, column-name whitespace, empty `Unnamed:` columns) |
+| **2 — Dictionary drafting** | Stages 2 + 3 | Composes an answer prompt from the profile, then drafts `dictionary.yaml` against the contract format with a generic question checklist |
+| **3 — Run + interpret** | Stages 4–9 | Wraps install / run / re-run-after-fix with a post-run review checklist mapped to common `SchemaError` patterns |
+| **4 — Optional post-pipeline derivations** | Post-Stage 9 (custom) | Generic Phase-3 derivation patterns (presence flags, ordinal maps, days-since, picklist normalization, composite scoring) when YAML `derived_fields:` isn't expressive enough |
+
+Distinguished from `data-dictionary` (which produces a Markdown/Excel dictionary deliverable, not a pandera contract). When the user wants only a dictionary, `data-dictionary` is the right skill — this one fires when they want the dictionary plus the validated 3-tab workbook plus optional derived columns.
 
 ---
 
