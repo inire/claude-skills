@@ -1,0 +1,174 @@
+# Dictionary contract for assets/example_dataset.csv.
+# Used to verify the skill end-to-end against a synthetic dataset.
+
+dataset:
+  name: example_transactions
+  description: Synthetic transaction line items used to exercise the dictionary-pipeline skill end-to-end.
+  source: assets/example_dataset.csv (synthetic; not from any real system)
+  grain: one row per transaction (this dataset has no line-item nesting)
+  pii: true
+  pii_fields: [customer_email]
+  naming_convention: snake_case
+  last_updated: "2026-04-28"
+
+fields:
+
+  - name: record_id
+    label: Unique transaction identifier
+    type: identifier
+    dtype: string
+    nullable: false
+    pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    source_column: Record ID
+    notes: |
+      UUID-shaped (synthetic, not enforced as v4-only).
+      Row-level primary key; 30 distinct values across 30 rows.
+    review_status: confirmed
+
+  - name: transaction_date
+    label: Calendar date of the transaction
+    type: date
+    dtype: datetime64[ns]
+    nullable: false
+    parse_format: "%Y-%m-%d"
+    source_column: Transaction Date
+    notes: |
+      ISO 8601 date. All values fall in calendar year 2026.
+    review_status: confirmed
+
+  - name: customer_status
+    label: Customer status at the time of the transaction
+    type: categorical
+    dtype: string
+    nullable: false
+    allowed_values: [active, prospect, churned, on_hold]
+    source_column: Customer Status
+    notes: |
+      Source has stray trailing whitespace on a few values
+      ("active ", "prospect "). Stage 5 strips those.
+    review_status: confirmed
+
+  - name: region
+    label: Sales region
+    type: categorical_open
+    dtype: string
+    nullable: false
+    source_column: Region
+    notes: |
+      Open taxonomy. Observed values: NA-EAST, NA-WEST,
+      EU-NORTH, EU-SOUTH, APAC, LATAM.
+    review_status: confirmed
+
+  - name: quantity
+    label: Number of units in the transaction
+    type: integer
+    dtype: Int64
+    nullable: false
+    min: 1
+    max: 100
+    source_column: Quantity
+    notes: |
+      Integer count, observed range 1-7.
+    review_status: confirmed
+
+  - name: unit_amount
+    label: Per-unit price in USD (currency)
+    type: decimal
+    dtype: float64
+    nullable: false
+    min: 0.0
+    max: 1000.0
+    source_column: Unit Amount
+    notes: |
+      Source has currency-string sentinels (' $- ', '$0', '-', empty)
+      that mean zero. Run prestage_helper.py before invoking the
+      pipeline so these become 0.0 instead of failing pandera coerce.
+    review_status: confirmed
+
+  - name: discount_pct
+    label: Promotional discount percentage
+    type: decimal
+    dtype: float64
+    nullable: true
+    null_tolerance: 0.6
+    min: 0.0
+    max: 100.0
+    source_column: Discount %
+    notes: |
+      Optional discount. ~50% of rows have no discount recorded;
+      empty / whitespace cells become NaN in the cleaned output.
+    review_status: confirmed
+
+  - name: is_recurring
+    label: Whether the transaction is part of a recurring subscription
+    type: bool
+    dtype: boolean
+    nullable: true
+    null_tolerance: 0.1
+    source_column: Is Recurring
+    notes: |
+      TRUE/FALSE strings in source. Stray whitespace on a few values
+      (" FALSE", " "). Stage 5 strips those before coercion.
+    review_status: confirmed
+
+  - name: last_modified
+    label: When the transaction was last edited (UTC)
+    type: date
+    dtype: datetime64[ns]
+    nullable: false
+    parse_format: "%Y-%m-%dT%H:%M:%SZ"
+    source_column: Last Modified UTC
+    notes: |
+      Sentinel value 1900-01-01T00:00:00Z used for transactions that
+      were imported and never edited. Real edits range from
+      2026-01 onward.
+    review_status: draft
+
+  - name: comments
+    label: Optional free-text comment
+    type: text
+    dtype: string
+    nullable: true
+    null_tolerance: 0.95
+    source_column: Comments
+    notes: |
+      Mostly blank (~85% of rows). No PII observed in synthetic data.
+    review_status: confirmed
+
+  - name: external_url
+    label: Deep link to the source record
+    type: text
+    dtype: string
+    nullable: false
+    pattern: "^https://erp\\.example\\.com/records/[0-9]+$"
+    source_column: External URL
+    notes: |
+      Functionally derivable from record_id but kept as a
+      reference field.
+    review_status: confirmed
+
+  - name: customer_email
+    label: Customer email address
+    type: text
+    dtype: string
+    nullable: false
+    pii: true
+    pattern: "^[^@]+@[^@]+\\.[^@]+$"
+    source_column: Customer Email
+    shareable: false
+    notes: |
+      PII. Synthetic addresses (alice@example.com, bob@example.com,
+      etc.). community-export drops this field entirely.
+    review_status: confirmed
+
+derived_fields:
+
+  - name: transaction_value
+    label: Total transaction value (qty x unit price)
+    type: decimal
+    dtype: float64
+    transformation: "unit_amount * quantity"
+    notes: |
+      Pre-discount line total. Stage 7 computes this from the
+      cleaned source columns.
+    review_status: confirmed
