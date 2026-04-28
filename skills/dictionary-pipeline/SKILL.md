@@ -27,11 +27,73 @@ LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dict
 
 ## The four-pass workflow
 
-(written across tasks 2.2 / 3.2 / 4.1 / 5.2)
+The pipeline runs as 11 stages (0–10). Most are deterministic Python; the LLM stages (2, 3, 6, 10) are where this skill earns its keep. Group them into four passes:
+
+| Pass | Pipeline mapping | What this skill does |
+|------|------------------|----------------------|
+| 1 — Pre-intake cleanup | Pre-Stage 0 | Closes small gaps in `scrub.py` so Stage 0 / Stage 4 don't choke on currency sentinels or whitespace-padded column names |
+| 2 — Dictionary drafting | Stages 2 + 3 | Composes the answer prompt from the Stage 1 profile, then drafts `dictionary.yaml` |
+| 3 — Run + interpret | Stages 4–9 | Runs the full pipeline, interprets `validation_report.json`, fixes the dictionary and reruns when validation fails |
+| 4 — Optional post-pipeline derivations | Post-Stage 9 | Generic Phase-3 derivation patterns when the YAML `derived_fields:` grammar isn't expressive enough |
+
+Stage 10 (final compare) is a brief manual review on the delivered `.xlsx` — see [the pipeline's own workflow guide](https://github.com/inire/dictionary-pipeline/blob/master/docs/workflow.md#6-post-pipeline-review-stage-10--manual) rather than duplicating it here.
 
 ### Pass 1 — Pre-intake cleanup
 
-(written in task 2.2)
+**When to use:** Only when Stage 0 (intake) or Stage 4 (enforce) fails on a real export. A clean export with sane column headers and consistent dtypes does not need Pass 1.
+
+**What `scrub.py` already does** (don't duplicate):
+- Encoding detection (CSV / TSV)
+- Header-row auto-detection (CSV / TSV) — Stage 0 wires this up via `--header-row auto` for delimited files
+- Formula-injection scan
+- Control-character strip
+
+**What `assets/prestage_helper.py` adds** (the small gap):
+- Whitespace strip on column names
+- Drop empty `Unnamed: N` columns (Excel blank-index artifact)
+- Currency-string normalization in object/string columns where the majority of non-null values are currency-parseable. Sentinels like ``""``, ``" "``, ``"$-"``, ``"$0"``, ``"-"`` become ``0.0`` so pandera can coerce to ``Float64`` / ``Int64`` in Stage 4.
+
+**Excel header-row** is not auto-detected by the pipeline. If your Excel file has a title row above the headers, pass `--header-row 1` (or whatever the index is) to either the pipeline directly or to `prestage_helper.py`.
+
+**Use it:**
+
+```python
+import sys
+sys.path.insert(0, "/path/to/claude-skills/skills/dictionary-pipeline/assets")
+from prestage_helper import prestage
+
+log = prestage(
+    "raw.xlsx",
+    "cleaned.xlsx",
+    header_row=1,                   # optional, defaults to 0
+    currency_columns=["arr", "tcv"], # optional, force-normalize these even if auto-detection skips
+)
+print(log)
+# {
+#   "rows": 268,
+#   "columns_after_strip": ["account_id", "account_name", "arr", ...],
+#   "columns_dropped": ["Unnamed: 0"],
+#   "header_row_used": 1,
+#   "currency_normalizations": {
+#     "arr": {"zero_sentinels": 142, "parsed": 126, "unparseable_to_null": 0},
+#     "tcv": {"zero_sentinels": 89, "parsed": 179, "unparseable_to_null": 0}
+#   }
+# }
+```
+
+Or as a CLI:
+
+```bash
+python prestage_helper.py --input raw.xlsx --output cleaned.xlsx --header-row 1
+```
+
+**Then run the pipeline against the cleaned file:**
+
+```bash
+dictionary-pipeline run --input cleaned.xlsx --contract dictionary.yaml --workdir runs/v1
+```
+
+**Don't fight the helper.** If your column has 5 numeric values and 95 text values, auto-detection (correctly) skips it — the column isn't currency-shaped. Force-normalizing it with `currency_columns=["status"]` would null-out 95% of the values. Either decide that those 95% really are missing data (and accept the nulls), or don't normalize at all.
 
 ### Pass 2 — Dictionary drafting
 
