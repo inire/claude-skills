@@ -344,7 +344,35 @@ Don't overwrite the Stage-9 deliverable — keep both files in `runs/v1/`. The p
 
 ## Common pitfalls
 
-(written in task 6)
+Lessons that come up across most real-data runs. Read these before the first run on a new dataset.
+
+### 1. Real data uncovers real bugs. Synthetic test fixtures don't.
+
+The pipeline can pass 100% of its unit tests and still fail on a real export. Hand-rolled test CSVs don't exercise the same code paths as a 50-column SFDC export, an ERP dump with currency-string sentinels, a survey export with multi-line free-text cells, or a healthcare claim file with HL7-style sentinel codes. **Run a real dataset end-to-end before declaring a workflow complete.** If the run surfaces a pipeline bug, file an issue or PR against [`dictionary-pipeline`](https://github.com/inire/dictionary-pipeline) — the skill stays the same.
+
+### 2. `data-dictionary` complements this skill; doesn't substitute for it.
+
+The [`data-dictionary`](../data-dictionary/SKILL.md) skill governs **how to think** about each field — its discipline (sample 50+ values, never blank notes, mark draft vs confirmed) carries directly into Pass 2 here. This skill governs **what to emit** so pandera can consume it. If the user wants a Markdown/Excel dictionary as the deliverable, use `data-dictionary`. If they want that *plus* the validated 3-tab workbook, use this skill — Pass 2 is essentially the data-dictionary protocol applied to YAML output.
+
+### 3. Don't bend the contract grammar. Use Pass 4 instead.
+
+The pipeline's `derived_fields:` only supports element-wise arithmetic and groupby aggregations. The temptation when a user asks for "is this row a high-value account" is to try to express it in the YAML — but YAML can't do `notnull`, `isin`, `fillna`, `lower()`, date arithmetic, or composite scoring. **Don't try.** Run the pipeline cleanly through Stage 9, then use [`assets/phase3_patterns.py`](assets/phase3_patterns.py) on the validated DataFrame. The contract stays simple, the derivations stay inspectable, and the pipeline's audit trail stays intact.
+
+### 4. Honest gaps beat phantom fixes.
+
+When a `SchemaError` isn't reproducible, don't ship a fix. Document the missing repro in the `notes:` of the relevant field with `review_status: draft`, and move on. The user catches it at Pass-2 review or after the next real-data run. Same rule for any `review_status: draft` field whose semantics you're not 100% certain about — leave it draft, don't guess and mark it confirmed. The deliverable's Data Dictionary tab surfaces draft fields, so the user (or anyone reading) knows where the open questions are.
+
+### 5. Cross-dataset rollups need a taxonomy harmonization mapping.
+
+Three datasets from the same source system can have three different taxonomies for the same concept (e.g. one uses `IT: Software & SAAS`, another uses `Software-SaaS`, a third uses `software_and_saas`). The dictionary YAML for each dataset is the right place to *document* its taxonomy — but cross-dataset rollups need a separate `taxonomy_map.yaml` that aligns categories across datasets. **Treat this as a separate artifact**, not something to bake into any one dictionary. If cross-dataset rollups become a recurring ask, that's a candidate for its own skill.
+
+### 6. Excel header rows aren't auto-detected.
+
+The pipeline's `scrub.detect_header_row()` only runs for CSV / TSV. For Excel files where the real headers aren't on row 0 (a title row above the headers is the most common cause), pass `--header-row N` to the pipeline directly OR run `prestage_helper.py` first with the same `header_row=N` argument. This isn't a bug — Excel files have multiple sheets and arbitrary structure, so heuristic detection is unsafe. State the header row explicitly.
+
+### 7. Don't run the pipeline inside the dictionary-pipeline git repo.
+
+The pipeline writes intake archives, parquet checkpoints, and the deliverable into `--workdir`. Pass a workdir **outside** any git repo (e.g. `D:\AI\Claude\runs\v1`) so artifacts don't pollute version control. The repo's `examples/` folder shows the pattern: example datasets are committed but their outputs go elsewhere.
 
 ## Asset files
 

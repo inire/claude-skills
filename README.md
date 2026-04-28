@@ -118,7 +118,9 @@ The pipeline itself runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9). T
 | **3 — Run + interpret** | Stages 4–9 | Wraps install / run / per-stage re-run with a post-run review checklist (schema revalidation, drift columns, transformation log, deliverable open) and a common-failure → fix table mapped to the most frequent `SchemaError` patterns |
 | **4 — Optional post-pipeline derivations** | Post-Stage 9 (custom) | Eight generic derivation patterns (presence flag, sentinel coalesce, ordinal map, days-since, picklist normalize, canonical domain, set-membership classify, composite score) for when YAML `derived_fields:` isn't expressive enough. Includes a transparent weighted-sum scoring framework and a Spearman/Kendall protocol for validating weights against any existing benchmark. |
 
-Distinguished from `data-dictionary` (which produces a Markdown/Excel dictionary deliverable, not a pandera contract). When the user wants only a dictionary, `data-dictionary` is the right skill — this one fires when they want the dictionary plus the validated 3-tab workbook plus optional derived columns.
+Distinguished from `data-dictionary` (which produces a Markdown/Excel dictionary deliverable, not a pandera contract). When the user wants only a dictionary, `data-dictionary` is the right skill — this one fires when they want the dictionary plus the validated 3-tab workbook plus optional derived columns. The two skills compose: `data-dictionary` governs *how* to think about each field; this skill governs *what* to emit so pandera can consume it.
+
+The skill also surfaces a set of cross-stream lessons (real data uncovers real bugs / don't bend the contract grammar — use Pass 4 / honest gaps beat phantom fixes / cross-dataset rollups need a separate taxonomy map / Excel header rows aren't auto-detected / workdir lives outside the repo) so future Claude sessions don't re-derive them.
 
 ---
 
