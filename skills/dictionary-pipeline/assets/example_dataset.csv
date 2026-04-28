@@ -2,19 +2,19 @@
 ,a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d,2026-01-15,active,NA-EAST,3,49.99, ,TRUE,2026-04-01T10:30:00Z,,https://erp.example.com/records/1001,alice@example.com
 ,b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e,2026-01-22,prospect,NA-WEST,1,199.00,15.0,FALSE,1900-01-01T00:00:00Z,follow-up needed,https://erp.example.com/records/1002,bob@example.com
 ,c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f,2026-02-03,active ,EU-NORTH,2,$0,0,TRUE,2026-03-15T14:20:00Z,,https://erp.example.com/records/1003,carol@example.com
-,d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80,2026-02-10,churned,APAC,5,89.50, $- ,FALSE,1900-01-01T00:00:00Z,,https://erp.example.com/records/1004,dan@example.com
+,d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80,2026-02-10,churned,APAC,5,89.50,0.0,FALSE,1900-01-01T00:00:00Z,,https://erp.example.com/records/1004,dan@example.com
 ,e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8091,2026-02-18,active,NA-EAST,1,$- , ,TRUE,2026-02-20T09:00:00Z,,https://erp.example.com/records/1005,eve@example.com
 ,f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f809102,2026-03-01,prospect,LATAM,4,29.99,5.5,FALSE,1900-01-01T00:00:00Z,referred by partner,https://erp.example.com/records/1006,frank@example.com
 ,a7b8c9d0-e1f2-4a3b-4c5d-6e7f80910213,2026-03-08,active,NA-WEST,2,149.00,10.0,TRUE,2026-04-15T16:45:00Z,,https://erp.example.com/records/1007,grace@example.com
 ,b8c9d0e1-f2a3-4b4c-5d6e-7f8091021324,2026-03-15,on_hold,EU-SOUTH,1,75.00, ,FALSE,2026-03-20T11:00:00Z,billing issue,https://erp.example.com/records/1008,henry@example.com
 ,c9d0e1f2-a3b4-4c5d-6e7f-809102132435,2026-03-22,active,NA-EAST,7,$0.00,, ,1900-01-01T00:00:00Z,,https://erp.example.com/records/1009,iris@example.com
 ,d0e1f2a3-b4c5-4d6e-7f80-910213243546,2026-04-01,prospect ,APAC,3,99.99,, FALSE,2026-04-10T08:30:00Z, ,https://erp.example.com/records/1010,jack@example.com
-,e1f2a3b4-c5d6-4e7f-8091-021324354657,2026-04-08,active,EU-NORTH,1,49.99, $- ,TRUE,2026-04-12T13:15:00Z,,https://erp.example.com/records/1011,kate@example.com
+,e1f2a3b4-c5d6-4e7f-8091-021324354657,2026-04-08,active,EU-NORTH,1,49.99,,TRUE,2026-04-12T13:15:00Z,,https://erp.example.com/records/1011,kate@example.com
 ,f2a3b4c5-d6e7-4f80-9102-132435465768,2026-04-15,churned,NA-WEST,2,-,0.0,FALSE,1900-01-01T00:00:00Z,,https://erp.example.com/records/1012,leo@example.com
 ,a3b4c5d6-e7f8-4091-0213-243546576879,2026-04-22,active,LATAM,4,79.50, ,TRUE,2026-04-25T17:00:00Z,,https://erp.example.com/records/1013,mary@example.com
 ,b4c5d6e7-f809-4102-1324-354657687980,2026-01-05,active,NA-EAST,1,29.99,, FALSE,2026-01-08T09:00:00Z,,https://erp.example.com/records/1014,nick@example.com
 ,c5d6e7f8-0910-4213-2435-465768798091,2026-01-12,prospect,EU-NORTH,2,159.00,12.5,FALSE,1900-01-01T00:00:00Z,,https://erp.example.com/records/1015,olivia@example.com
-,d6e7f809-1021-4324-3546-576879809102,2026-02-25,active,APAC,3,49.99, $0 ,TRUE,2026-04-20T14:30:00Z,,https://erp.example.com/records/1016,peter@example.com
+,d6e7f809-1021-4324-3546-576879809102,2026-02-25,active,APAC,3,49.99,0.0,TRUE,2026-04-20T14:30:00Z,,https://erp.example.com/records/1016,peter@example.com
 ,e7f80910-2132-4435-4657-687980910213,2026-03-05,active,NA-WEST,1,89.50, ,TRUE,2026-03-12T10:00:00Z,,https://erp.example.com/records/1017,quinn@example.com
 ,f8091021-3243-4546-5768-798091021324,2026-03-12,churned,EU-SOUTH,5,69.99,, ,1900-01-01T00:00:00Z,,https://erp.example.com/records/1018,rachel@example.com
 ,a9012132-4354-4657-6879-809102132435,2026-03-19,active,LATAM,2,119.00,7.5,FALSE,2026-04-05T15:00:00Z,,https://erp.example.com/records/1019,steve@example.com
@@ -23,7 +23,7 @@
 ,d2435465-7687-4980-9102-132435465768,2026-04-16,active,EU-NORTH,2,199.00, ,TRUE,2026-04-20T09:45:00Z,,https://erp.example.com/records/1022,vera@example.com
 ,e3546576-8798-4091-0213-243546576879,2026-04-23,on_hold,NA-WEST,1,$0,0.0,FALSE,2026-04-25T13:00:00Z,credit hold,https://erp.example.com/records/1023,wes@example.com
 ,f4657687-9809-4102-1324-354657687980,2026-02-12,active,EU-SOUTH,3,59.99, ,TRUE,2026-04-22T16:15:00Z,,https://erp.example.com/records/1024,xena@example.com
-,a5768798-0910-4213-2435-465768798091,2026-02-19,churned,LATAM,2,29.99, $- ,FALSE,1900-01-01T00:00:00Z,,https://erp.example.com/records/1025,yara@example.com
+,a5768798-0910-4213-2435-465768798091,2026-02-19,churned,LATAM,2,29.99,,FALSE,1900-01-01T00:00:00Z,,https://erp.example.com/records/1025,yara@example.com
 ,b6879809-1021-4324-3546-576879809102,2026-03-26,active,NA-EAST,1,49.99,, FALSE,2026-04-01T10:15:00Z, ,https://erp.example.com/records/1026,zach@example.com
 ,c7980910-2132-4435-4657-687980910213,2026-04-05,prospect,APAC,5,179.50,15.0,TRUE,2026-04-10T08:00:00Z,POC underway,https://erp.example.com/records/1027,amy@example.com
 ,d8091021-3243-4546-5768-798091021324,2026-04-12,active,EU-NORTH,2,79.99, ,TRUE,2026-04-15T11:45:00Z,,https://erp.example.com/records/1028,brian@example.com

@@ -198,6 +198,34 @@ def test_handles_excel_with_explicit_header_row(tmp_workdir: Path) -> None:
     assert log["header_row_used"] == 1
 
 
+def test_skips_columns_without_currency_markers(tmp_workdir: Path) -> None:
+    """A plain percentage column (numbers + empties, no $ markers) should be left alone.
+
+    Without this check, the detection would falsely flag any column where
+    most cells are empty/numeric as currency-like, which would convert
+    legitimate NaN-meaning-missing into 0.0.
+    """
+    raw = tmp_workdir / "percentage.csv"
+    out = tmp_workdir / "percentage_out.csv"
+    _write_csv(
+        raw,
+        "id,discount_pct\n"
+        "1,15.0\n"
+        "2,\n"
+        "3,5.5\n"
+        "4,\n"
+        "5,10.0\n"
+        "6,\n"
+        "7,12.5\n",
+    )
+
+    log = prestage(raw, out)
+
+    # discount_pct has no $ markers, so prestage should skip it.
+    # Empties stay as NaN; pandera coerce will handle the column natively.
+    assert "discount_pct" not in log["currency_normalizations"]
+
+
 def test_explicit_currency_columns_override_detection(tmp_workdir: Path) -> None:
     """If the user passes currency_columns explicitly, normalize even when <50% parses."""
     raw = tmp_workdir / "explicit.csv"

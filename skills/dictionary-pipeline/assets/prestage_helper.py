@@ -84,21 +84,41 @@ def _normalize_currency_value(raw: Any) -> tuple[float | None, str | None]:
         return None, None
 
 
+_EXPLICIT_CURRENCY_MARKERS = {"$-", "$0", "$0.0", "$0.00", "-"}
+
+
+def _has_currency_marker(raw: Any) -> bool:
+    """Return True if a cell contains an explicit currency marker."""
+    if raw is None:
+        return False
+    if isinstance(raw, float) and pd.isna(raw):
+        return False
+    s = str(raw).strip()
+    if not s:
+        return False
+    if "$" in s:
+        return True
+    return s in _EXPLICIT_CURRENCY_MARKERS
+
+
 def _column_is_currency_like(series: pd.Series, threshold: float = 0.5) -> bool:
     """
-    Decide whether a non-numeric column is mostly currency values.
+    Decide whether a non-numeric column is a currency column.
 
-    Returns True when:
-      - At least one value parses as a real number, AND
+    Detection requires explicit currency markers — at least one cell
+    must contain a ``$`` or a recognized dash-style zero marker. This
+    keeps the helper from claiming plain-numeric columns (percentages,
+    counts, ratios) where empty just means "no value recorded".
+
+    Returns True when ALL of these hold:
+      - At least one value parses as a real number
+      - At least one value has an explicit currency marker
       - (parsed + zero-sentinels) / (parsed + zero-sentinels + unparseable)
-        is >= ``threshold``.
+        is >= ``threshold``
 
-    "Real number" excludes NaN-from-the-source (low signal). "Zero
-    sentinels" includes empty / dash / `$-` / `$0` style markers since
-    those are unambiguously currency notation. Unparseable text values
-    (like ``"ACTIVE"``) count against detection.
-
-    Already-numeric columns return False — there's nothing to clean.
+    Already-numeric columns return False — nothing to clean. Pure
+    numeric-with-empties columns return False — pandera coerce handles
+    those without help.
     """
     if pd.api.types.is_numeric_dtype(series):
         return False
@@ -109,8 +129,11 @@ def _column_is_currency_like(series: pd.Series, threshold: float = 0.5) -> bool:
     parsed = 0
     sentinel = 0
     unparseable = 0
+    has_marker = False
     for v in non_null:
         val, kind = _normalize_currency_value(v)
+        if _has_currency_marker(v):
+            has_marker = True
         if val is None:
             unparseable += 1
         elif kind == "parsed":
@@ -118,7 +141,7 @@ def _column_is_currency_like(series: pd.Series, threshold: float = 0.5) -> bool:
         else:
             sentinel += 1
 
-    if parsed == 0:
+    if parsed == 0 or not has_marker:
         return False
 
     signal = parsed + sentinel
@@ -209,6 +232,23 @@ def prestage(
 
     df.columns = [str(c).strip() for c in df.columns]
     columns_after_strip = list(df.columns)
+
+    # Cell-level whitespace cleanup. For each string-typed cell:
+    #   - strip leading/trailing whitespace
+    #   - if stripped result is empty, become NaN
+    # Pandera's Stage-4 coerce can't handle " FALSE" -> bool or " 49.99" ->
+    # float. The pipeline's Stage 5 strips whitespace AFTER enforcement and
+    # only for text-type columns. Doing this globally pre-Stage-0 is safe:
+    # leading/trailing whitespace is almost never analytically meaningful.
+    def _strip_or_nan(v: Any) -> Any:
+        if isinstance(v, str):
+            stripped = v.strip()
+            return pd.NA if stripped == "" else stripped
+        return v
+
+    for col in df.columns:
+        if df[col].dtype == object or pd.api.types.is_string_dtype(df[col]):
+            df[col] = df[col].map(_strip_or_nan)
 
     columns_dropped: list[str] = []
     for col in list(df.columns):
