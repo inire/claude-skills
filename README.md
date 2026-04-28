@@ -107,7 +107,7 @@ Distinguished from the auto-memory system (incremental fact-saves as work happen
 
 ### dictionary-pipeline
 
-LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dictionary-pipeline) tool — a pandas-first data-prep pipeline whose data dictionary is a YAML contract that drives schema enforcement, cleaning, derivation, and a 3-tab Excel deliverable.
+LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dictionary-pipeline) tool — a pandas-first data-prep pipeline that turns a messy CSV/Excel into a validated 3-tab Excel deliverable (cleaned data + data dictionary + automated-changes log). Generic across any tabular domain: consumer purchases, financial exports, surveys, inventory, CRM, healthcare records, IoT telemetry. The data dictionary is a YAML contract that drives schema enforcement, cleaning, derivation, and the dictionary tab in the deliverable.
 
 The pipeline itself runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9). This skill drives the four passes that *aren't* deterministic:
 
