@@ -1,0 +1,281 @@
+# Annotated dictionary.yaml template for dictionary-pipeline.
+#
+# Every field is documented inline. This template is structured around a
+# hypothetical "transaction line items" dataset because that shape is
+# common across any business domain (commerce, B2B, healthcare claims,
+# survey responses, etc.) — but the patterns are generic.
+#
+# Workflow:
+#   1. Copy this file into your workdir as `dictionary.yaml`.
+#   2. Replace placeholder values with your dataset's specifics.
+#   3. Delete fields you don't need; add fields you do.
+#   4. Validate by running `dictionary-pipeline run --contract dictionary.yaml ...`.
+#
+# Reference: project_files/dictionary_contract_format.md in the
+# dictionary-pipeline repo is the canonical spec.
+
+dataset:
+  # snake_case identifier; becomes the data tab's sheet name in the
+  # delivered Excel.
+  name: transaction_line_items_2026
+
+  # One sentence, plain language. Goes onto the Data Dictionary tab.
+  description: Transaction line items for calendar year 2026, one row per item per transaction.
+
+  # Where the file came from. Be specific enough that someone reading
+  # the dictionary cold can identify the export.
+  source: ERP export — Transactions module, line-items report, calendar year 2026.
+
+  # SINGLE MOST IMPORTANT FIELD. State explicitly what one row
+  # represents. Grain confusion is the #1 cause of analytical errors.
+  grain: one row per item per transaction (NOT one row per transaction; one transaction can have many line items).
+
+  # Whether the dataset contains personally-identifying information at
+  # all. If true, list every PII column in pii_fields below.
+  pii: true
+  pii_fields: [customer_email, billing_address]
+
+  # Currently always snake_case. Source columns get renamed to
+  # snake_case during Stage 4 enforce via `source_column` mappings.
+  naming_convention: snake_case
+
+  # ISO date. Update whenever the dictionary itself changes.
+  last_updated: "2026-04-28"
+
+  # Optional. Bump when the SHARED contract changes (semver).
+  # Only relevant if you'll publish this dictionary to community/.
+  # community_version: "0.1.0"
+
+# ---------------------------------------------------------------------
+# Source fields — one entry per column in your input file.
+# ---------------------------------------------------------------------
+fields:
+
+  # ----- IDENTIFIER (UUID, account number, primary key) -----
+  - name: record_id
+    label: Unique identifier for this line item
+    type: identifier
+    dtype: string                          # always 'string' for identifiers
+    nullable: false
+    pattern: "^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$"  # UUIDv4
+    source_column: Record ID
+    notes: |
+      UUIDv4. Row-level primary key — every row has a distinct value.
+      If you see duplicates, the source export is broken.
+    review_status: confirmed
+
+  # ----- CATEGORICAL (closed value set) -----
+  - name: customer_status
+    label: Customer account status at the time of this transaction
+    type: categorical
+    dtype: string
+    nullable: false
+    allowed_values:                        # ENUMERATE every observed value
+      - active
+      - prospect
+      - churned
+      - on_hold
+    source_column: Customer Status
+    notes: |
+      Status as recorded at the transaction timestamp, not current.
+      Sample 50+ rows in the profile output before locking the
+      allowed_values list — categorical schemas with missing values
+      will fail Stage 4 enforce with a clear error you can then
+      iterate on.
+    review_status: confirmed
+
+  # ----- CATEGORICAL_OPEN (high-cardinality, may grow over time) -----
+  - name: region
+    label: Sales region (open taxonomy — new regions added quarterly)
+    type: categorical_open                 # NOTE: 'categorical_open' not 'categorical'
+    dtype: string
+    nullable: false
+    # No allowed_values for categorical_open — the values are
+    # documented in notes but not enforced by pandera.
+    source_column: Region
+    notes: |
+      Open taxonomy: new regions appear when the company expands.
+      Observed values as of last_updated: NA-EAST, NA-WEST, EU-NORTH,
+      EU-SOUTH, APAC, LATAM. Picklist hygiene: source uses uppercase
+      with hyphen separator; preserved as-is.
+    review_status: confirmed
+
+  # ----- DATE (with explicit parse_format) -----
+  - name: transaction_date
+    label: Calendar date the transaction was recorded
+    type: date
+    dtype: datetime64[ns]
+    nullable: false
+    parse_format: "%Y-%m-%d"               # match your source's format
+    source_column: Transaction Date
+    notes: |
+      ISO 8601 date in source. No timezone information present;
+      treat as local to the recording system. Min observed
+      2026-01-01, max 2026-12-31.
+    review_status: confirmed
+
+  # ----- DATE WITH SENTINEL (nullable) -----
+  - name: last_modified
+    label: When the line item was last edited (null if never edited)
+    type: date
+    dtype: datetime64[ns]
+    nullable: true                         # flagged nullable
+    null_tolerance: 0.5                    # accept up to 50% nulls
+    parse_format: "%Y-%m-%dT%H:%M:%SZ"
+    source_column: Last Modified UTC
+    notes: |
+      Source uses ISO 8601 with Z suffix. Null when the line was
+      never edited after creation. Some legacy rows have a sentinel
+      date of 1900-01-01 (epoch) — those rows are imports from a
+      retired system; still treat as a meaningful "never edited"
+      signal.
+    review_status: draft
+
+  # ----- INTEGER (with min/max) -----
+  - name: quantity
+    label: Number of units on this line
+    type: integer
+    dtype: Int64                           # CAPITALIZED — pandas nullable extension dtype
+    nullable: false                        # but here we declare not nullable
+    min: 1
+    max: 10000
+    source_column: Quantity
+    notes: |
+      Integer, range 1-N. Use Int64 (capital I) for any integer
+      column where you might ever want to support nullable, or where
+      pandas might want to coerce something to NA. The lowercase
+      'int64' is the numpy dtype which CANNOT represent NA — Stage 4
+      coerce will fail on any null value.
+    review_status: confirmed
+
+  # ----- DECIMAL (currency) -----
+  - name: unit_amount
+    label: Per-unit price in source currency
+    type: decimal
+    dtype: float64                         # numpy float64 is fine — represents NaN naturally
+    nullable: false
+    min: 0.0
+    max: 100000.0
+    source_column: Unit Amount
+    notes: |
+      Pre-discount per-unit price. Currency is captured separately
+      in `currency`. If the source has currency-string sentinels
+      (' $- ', '$0', etc.), pre-process with prestage_helper.py
+      first — pandera's coerce step doesn't understand those.
+    review_status: confirmed
+
+  # ----- DECIMAL (with reliability flag) -----
+  - name: discount_pct
+    label: Promotional discount percentage applied to this line
+    type: decimal
+    dtype: float64
+    nullable: true
+    null_tolerance: 0.30
+    min: 0.0
+    max: 100.0
+    reliability: unreliable                # flag noisy/inconsistent data
+    source_column: Discount %
+    notes: |
+      Recorded inconsistently — some lines store as 0.0-1.0
+      fractions, others as 0-100 percentages. We do NOT normalize
+      this in the contract; downstream consumers must check the
+      source system before using.
+    review_status: draft                   # 'draft' = needs human confirmation
+
+  # ----- BOOL -----
+  - name: is_recurring
+    label: Whether this line is part of a recurring subscription
+    type: bool
+    dtype: boolean                         # CAPITALIZED for nullable; lowercase 'bool' for non-nullable
+    nullable: false
+    source_column: Is Recurring
+    notes: |
+      Boolean flag. Source uses TRUE/FALSE strings; pandera coerces
+      to native booleans. If the source uses Y/N, 1/0, or X-marks,
+      add a Stage 5 cleaning rule to map them.
+    review_status: confirmed
+
+  # ----- TEXT (free-form) -----
+  - name: notes
+    label: Free-text comment field
+    type: text
+    dtype: string
+    nullable: true
+    null_tolerance: 0.95                   # almost always blank
+    source_column: Comments
+    notes: |
+      Optional comment. ~95% of rows are blank in this dataset.
+      No PII observed in the sample, but flag for review since the
+      field is unstructured.
+    review_status: draft
+
+  # ----- TEXT (with regex pattern) -----
+  - name: external_url
+    label: Link back to the source system record
+    type: text
+    dtype: string
+    nullable: false
+    pattern: "^https://erp\\.example\\.com/records/[0-9]+$"
+    source_column: External URL
+    notes: |
+      Deep link into the ERP. Functionally derivable from
+      record_id, kept as a reference field for one-click navigation
+      from the deliverable.
+    review_status: confirmed
+
+  # ----- PII (text) -----
+  - name: customer_email
+    label: Customer email address
+    type: text
+    dtype: string
+    nullable: false
+    pii: true                              # flagged as PII
+    pattern: "^[^@]+@[^@]+\\.[^@]+$"
+    source_column: Customer Email
+    shareable: false                       # exclude from community-export entirely
+    notes: |
+      PII. Suppress in any aggregates or exported summaries.
+      community_export drops this field entirely (shareable: false).
+    review_status: confirmed
+
+# ---------------------------------------------------------------------
+# Derived fields — added by Stage 7. Limited to arithmetic and groupby.
+# More expressive transformations belong in Pass 4 (post-pipeline).
+# ---------------------------------------------------------------------
+derived_fields:
+
+  # ----- ELEMENT-WISE ARITHMETIC -----
+  - name: line_total
+    label: Total amount for this line (qty x unit price)
+    type: decimal
+    dtype: float64
+    transformation: "unit_amount * quantity"
+    notes: |
+      Pre-discount line total. Discount itself is captured in
+      discount_pct but NOT applied here — the contract reflects
+      the source data as-is.
+    review_status: confirmed
+
+  # ----- GROUPBY SIZE -----
+  - name: lines_per_transaction
+    label: Number of line items in this transaction (broadcast to every line)
+    type: integer
+    dtype: Int64
+    transformation: "groupby(transaction_id).size()"
+    notes: |
+      Per-transaction row count, repeated on every line. Useful for
+      filtering to multi-line transactions in downstream analysis.
+    review_status: confirmed
+
+  # ----- GROUPBY AGGREGATION -----
+  - name: transaction_total
+    label: Sum of all line_totals in this transaction (broadcast)
+    type: decimal
+    dtype: float64
+    transformation: "groupby(transaction_id).line_total.sum()"
+    notes: |
+      Pre-discount transaction total. Repeats on every line in the
+      transaction. Note this references the DERIVED field
+      `line_total` — the pipeline computes derivations in
+      declaration order, so put `line_total` before this entry.
+    review_status: confirmed
