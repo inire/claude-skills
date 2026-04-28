@@ -384,4 +384,20 @@ The pipeline writes intake archives, parquet checkpoints, and the deliverable in
 
 ## Trigger-correctness manual checklist
 
-(written in task 7.3)
+After installing this skill, run through these 7 prompts in fresh Claude conversations to verify the trigger description fires on the right requests and stays out of the way otherwise. The expected behavior is what *should* happen — adjust the description in SKILL.md frontmatter if the actual behavior doesn't match.
+
+| # | Prompt | Expected behavior |
+|---|--------|-------------------|
+| 1 | "Build me a data dictionary for this CSV." | `data-dictionary` skill fires. **This skill stays silent.** |
+| 2 | "Score these accounts based on intent data." | No skill fires for the scoring (this skill stays silent — it's not a generic scorer). User gets pandas-inline guidance. |
+| 3 | "Run the dictionary-pipeline on this Excel file." | **This skill fires.** Walks the user through the four passes. |
+| 4 | "Validate this against a schema and produce a 3-tab workbook." | **This skill fires.** Pass 1 → 3, with Pass 4 only if the user later asks for derived columns. |
+| 5 | "I want a Phase 3 workbook with a composite priority score." | **This skill fires.** Pass 4 prominent — `phase3_patterns.composite_score` referenced. |
+| 6 | "Make me a chart of revenue by region." | **No skill fires.** Plain pandas/matplotlib answer. The data is presumed clean. |
+| 7 | "Process this {domain-specific} export." (Incydr, SOX, claim, etc.) | If a domain-specific skill exists for that format, that one fires. **This skill stays silent.** If no domain-specific skill exists, this skill fires as a fallback. |
+
+If the matrix has any miss:
+- **False positive** (this skill fires when it shouldn't): tighten the "Do NOT use" clauses in the description, naming the conflict more explicitly.
+- **False negative** (this skill doesn't fire when it should): broaden the trigger phrases or strengthen the "Use when" framing.
+
+For automated regression tests (when `claude-skills` adds skill-firing telemetry), this matrix becomes a CI check. Until then, manual.

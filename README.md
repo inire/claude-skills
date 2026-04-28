@@ -120,7 +120,7 @@ The pipeline itself runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9). T
 
 Distinguished from `data-dictionary` (which produces a Markdown/Excel dictionary deliverable, not a pandera contract). When the user wants only a dictionary, `data-dictionary` is the right skill — this one fires when they want the dictionary plus the validated 3-tab workbook plus optional derived columns. The two skills compose: `data-dictionary` governs *how* to think about each field; this skill governs *what* to emit so pandera can consume it.
 
-The skill also surfaces a set of cross-stream lessons (real data uncovers real bugs / don't bend the contract grammar — use Pass 4 / honest gaps beat phantom fixes / cross-dataset rollups need a separate taxonomy map / Excel header rows aren't auto-detected / workdir lives outside the repo) so future Claude sessions don't re-derive them.
+The skill also surfaces a set of cross-stream lessons (real data uncovers real bugs / don't bend the contract grammar — use Pass 4 / honest gaps beat phantom fixes / cross-dataset rollups need a separate taxonomy map / Excel header rows aren't auto-detected / workdir lives outside the repo) so future Claude sessions don't re-derive them. A 7-prompt manual trigger-correctness checklist lives at the bottom of the SKILL for verifying the description fires on the right requests after installation.
 
 ---
 
