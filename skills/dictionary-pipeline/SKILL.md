@@ -251,7 +251,96 @@ For the full troubleshooting guide, see [`docs/workflow.md`](https://github.com/
 
 ### Pass 4 — Optional post-pipeline derivations
 
-(written in task 5.2)
+**This pass is opt-in.** Most runs end at Pass 3 with the 3-tab Excel deliverable. Only invoke Pass 4 when the user wants:
+
+- Derived columns the pipeline's `derived_fields:` grammar can't express (presence flags, ordinal mapping, days-since, picklist normalization, set-membership classification, composite scoring)
+- A ranked / scored / categorized version of the validated data
+- A second deliverable workbook with the derivations applied
+
+**Run on the validated DataFrame post-Stage 9, not inside the contract.** The pipeline's contract is intentionally narrow. Don't try to bend the YAML to do these — use `assets/phase3_patterns.py`.
+
+#### The pattern library
+
+```python
+import sys, pandas as pd
+sys.path.insert(0, "/path/to/claude-skills/skills/dictionary-pipeline/assets")
+from phase3_patterns import (
+    flag_from_presence,
+    coalesce_with_sentinel,
+    ordinal_map,
+    days_since,
+    normalize_picklist,
+    canonical_domain,
+    classify_set_membership,
+    composite_score,
+)
+
+# Load the validated output from Stage 9
+df = pd.read_excel("runs/v1/transaction_line_items_2026.xlsx", sheet_name="transaction_line_items_2026")
+```
+
+Then chain whatever derivations apply. Each function is documented in the source — read the docstrings for NaN behavior before applying to data with high null rates.
+
+#### Composite scoring framework
+
+When the user wants a priority / ranking score, default to a **transparent weighted sum** rather than a black-box magic number. Three reasons:
+
+1. **Inspectable.** A weight dict like `{"is_recent": 1.5, "is_high_volume": 2.0, "matches_target_segment": 3.0}` is auditable in 5 seconds. A 47-feature ML model is not.
+2. **Tunable.** The user can change a weight from 1.0 to 1.5 and see the ranking shift immediately. Iteration is fast.
+3. **Honest.** The user knows exactly why a row scored high. No "the model says so" answers.
+
+```python
+df["priority_score"] = composite_score(
+    df,
+    weights={
+        "is_active": 2.0,
+        "is_recent_activity": 1.5,
+        "matches_target_segment": 3.0,
+        "high_value_indicator": 2.0,
+    },
+    name="priority_score",
+)
+df.sort_values("priority_score", ascending=False).head(20)
+```
+
+#### Validate your weights against any existing benchmark
+
+If the user has an existing score, ranking, or hand-curated label, **compare** before trusting the new score. Use Spearman ρ (rank correlation) and Kendall τ (concordance):
+
+```python
+from scipy.stats import spearmanr, kendalltau
+
+rho, _ = spearmanr(df["priority_score"], df["existing_score"])
+tau, _ = kendalltau(df["priority_score"], df["existing_score"])
+print(f"Spearman ρ = {rho:.3f}, Kendall τ = {tau:.3f}")
+
+# Surface top-K disagreements in BOTH directions:
+df["my_rank"] = df["priority_score"].rank(ascending=False)
+df["their_rank"] = df["existing_score"].rank(ascending=False)
+df["rank_diff"] = df["my_rank"] - df["their_rank"]
+
+# Rows I score higher than they do (overranked by my score):
+print(df.nlargest(10, "rank_diff")[["my_rank", "their_rank", "rank_diff"]])
+# Rows I score lower than they do (underranked):
+print(df.nsmallest(10, "rank_diff")[["my_rank", "their_rank", "rank_diff"]])
+```
+
+**ρ < 0.5** is a strong signal that one of you is wrong. Look at the top disagreements and decide whether to revise weights, accept the divergence (with explanation in the deliverable), or escalate the discrepancy.
+
+**Don't trust your own rubric blindly.** If you assigned a 27% weight to "company size" and it correlates near-zero with the user's existing label, that 27% was a guess, not a signal. Re-weight.
+
+#### Save a Phase-3 deliverable
+
+If the user wants a separate workbook for the derived view:
+
+```python
+with pd.ExcelWriter("runs/v1/phase3_derived.xlsx", engine="openpyxl") as w:
+    df.to_excel(w, sheet_name="data_with_derivations", index=False)
+    # If you want a derivations sheet documenting each derived column:
+    derivations_doc.to_excel(w, sheet_name="derivations", index=False)
+```
+
+Don't overwrite the Stage-9 deliverable — keep both files in `runs/v1/`. The pipeline's deliverable is the validated source-of-truth; the Phase-3 deliverable is the user's analysis on top.
 
 ## Common pitfalls
 
