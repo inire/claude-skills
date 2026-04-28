@@ -8,18 +8,51 @@
 
 Custom skills for Claude.ai and Claude Code. Each skill follows the [agentskills.io specification](https://agentskills.io/specification) — drop a folder in and Claude gains a new capability.
 
-| Skill | What it does | Triggers |
-|-------|-------------|----------|
-| [`mckinsey-deck-check`](skills/mckinsey-deck-check/SKILL.md) | Audits a PPTX against McKinsey's Hypothesis-Driven Framework across 11 dimensions, then fixes issues in-place | "check my deck", "is this McKinsey-ready" |
-| [`rimworld-log-check`](skills/rimworld-log-check/SKILL.md) | Diagnoses mod conflicts, crashes, and redundancies from HugsLib logs — names the responsible mods | "check my log", sharing a HugsLib Gist URL |
-| [`data-dictionary`](skills/data-dictionary/SKILL.md) | Drafts and iterates a per-field data dictionary from any tabular file through structured review passes | "build a data dictionary", "document my columns" |
-| [`continuation-prompt`](skills/continuation-prompt/SKILL.md) | Generates a structured handoff doc for the next Claude Code session at milestone close — TL;DR, state, recap, next-scope, open questions, references | "make a continuation prompt", "build a handoff doc", "save context for next session" |
-| [`project-memory-update`](skills/project-memory-update/SKILL.md) | Reconciles a project's auto-memory file at milestone close — surgical edits per section, doesn't lose accumulated history | "update project memory", "reflect this session in memory", "sync project memory" |
-| [`dictionary-pipeline`](skills/dictionary-pipeline/SKILL.md) | LLM-side companion for the [dictionary-pipeline](https://github.com/inire/dictionary-pipeline) tool — drives the four-pass workflow (pre-intake cleanup → dictionary draft → run → optional post-pipeline derivations) on any messy tabular file | "schema-validate this", "run the dictionary-pipeline", "validate and produce a 3-tab workbook" |
+| Category | Skill | What it does | Triggers |
+|----------|-------|-------------|----------|
+| Data | [`data-dictionary`](skills/data-dictionary/SKILL.md) | Drafts and iterates a per-field data dictionary from any tabular file through structured review passes | "build a data dictionary", "document my columns" |
+| Data | [`dictionary-pipeline`](skills/dictionary-pipeline/SKILL.md) | LLM-side companion for the [dictionary-pipeline](https://github.com/inire/dictionary-pipeline) tool — drives the four-pass workflow on any messy tabular file | "schema-validate this", "run the dictionary-pipeline", "validate and produce a 3-tab workbook" |
+| Documents | [`mckinsey-deck-check`](skills/mckinsey-deck-check/SKILL.md) | Audits a PPTX against McKinsey's Hypothesis-Driven Framework across 11 dimensions, then fixes issues in-place | "check my deck", "is this McKinsey-ready" |
+| Diagnostics | [`rimworld-log-check`](skills/rimworld-log-check/SKILL.md) | Diagnoses mod conflicts, crashes, and redundancies from HugsLib logs — names the responsible mods | "check my log", sharing a HugsLib Gist URL |
+| Workflow | [`continuation-prompt`](skills/continuation-prompt/SKILL.md) | Generates a structured handoff doc for the next Claude Code session at milestone close — TL;DR, state, recap, next-scope, open questions, references | "make a continuation prompt", "build a handoff doc", "save context for next session" |
+| Workflow | [`project-memory-update`](skills/project-memory-update/SKILL.md) | Reconciles a project's auto-memory file at milestone close — surgical edits per section, doesn't lose accumulated history | "update project memory", "reflect this session in memory", "sync project memory" |
 
 ---
 
 ## Skills
+
+### data-dictionary
+
+Drafts and iterates a data dictionary from a raw dataset (CSV, Excel, or any tabular file). Produces a per-field reference covering name, label, type, values, source, notes, and transformations — then iterates with the user through structured review passes until every field is confirmed (not inferred).
+
+Standard dictionary columns:
+
+| Column | Purpose |
+|--------|---------|
+| `field_name` | Exact name as it appears in the data |
+| `label` | Human-readable description — never the field name verbatim |
+| `type` | `text`, `integer`, `decimal`, `date`, `boolean`, `categorical`, `identifier`, `json`/`array` |
+| `values` | Enumerated categorical values, pulled from actual data (not documentation) |
+| `source` | System or form the field comes from |
+| `notes` | Nulls, mixed types, business rules, edge cases — never blank |
+| `transformations` | Formula for derived fields only |
+
+Four-phase workflow: assess inputs → draft v1 → iterate with review gates → final review with inferred-field validation targets.
+
+### dictionary-pipeline
+
+LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dictionary-pipeline) tool — a pandas-first data-prep pipeline that turns a messy CSV/Excel into a validated 3-tab Excel deliverable. Generic across any tabular domain. The pipeline runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9); this skill drives the four passes that aren't:
+
+| Pass | Pipeline mapping | What this skill does |
+|------|------------------|----------------------|
+| **1 — Pre-intake cleanup** | Pre-Stage 0 | Currency-string sentinels, column whitespace, empty `Unnamed:` columns. Backed by a TDD-tested `prestage_helper.py`. |
+| **2 — Dictionary drafting** | Stages 2 + 3 | Drafts `dictionary.yaml` from the profile output, with a 13-question domain-agnostic checklist for ambiguous semantics. The highest-leverage pause point. |
+| **3 — Run + interpret** | Stages 4–9 | Install / run / per-stage rerun, plus a post-run review checklist and common-failure → fix table for the most frequent `SchemaError` patterns. |
+| **4 — Optional post-pipeline derivations** | Post-Stage 9 | Eight generic derivation patterns (`flag_from_presence`, `coalesce_with_sentinel`, `ordinal_map`, `days_since`, `normalize_picklist`, `canonical_domain`, `classify_set_membership`, `composite_score`) plus a transparent weighted-sum scoring framework with Spearman/Kendall validation. |
+
+Distinguished from `data-dictionary` — that skill produces a Markdown/Excel dictionary deliverable, this one produces the dictionary *plus* the validated 3-tab workbook *plus* optional derived columns. The two compose: `data-dictionary` governs *how* to think about each field; this skill governs *what* to emit so pandera can consume it.
+
+Ships with 30 tests (10 on `prestage_helper`, 20 on `phase3_patterns`), a synthetic dataset that runs end-to-end against the pipeline, a 7-prompt manual trigger-correctness checklist, and a `deploy.sh` for syncing to `~/.claude/skills/`.
 
 ### mckinsey-deck-check
 
@@ -62,24 +95,6 @@ Performs the same core analysis as [Orion's rw-log-check tool](https://orionFive
 
 Supports RimWorld 1.4, 1.5, and 1.6 log formats. Accepts HugsLib Gist URLs, Pastebin links, or direct paste.
 
-### data-dictionary
-
-Drafts and iterates a data dictionary from a raw dataset (CSV, Excel, or any tabular file). Produces a per-field reference covering name, label, type, values, source, notes, and transformations — then iterates with the user through structured review passes until every field is confirmed (not inferred).
-
-Standard dictionary columns:
-
-| Column | Purpose |
-|--------|---------|
-| `field_name` | Exact name as it appears in the data |
-| `label` | Human-readable description — never the field name verbatim |
-| `type` | `text`, `integer`, `decimal`, `date`, `boolean`, `categorical`, `identifier`, `json`/`array` |
-| `values` | Enumerated categorical values, pulled from actual data (not documentation) |
-| `source` | System or form the field comes from |
-| `notes` | Nulls, mixed types, business rules, edge cases — never blank |
-| `transformations` | Formula for derived fields only |
-
-Four-phase workflow: assess inputs → draft v1 → iterate with review gates → final review with inferred-field validation targets.
-
 ### continuation-prompt
 
 Generates a structured handoff document for the next Claude Code session at the end of a milestone — so a fresh session can pick up immediately without re-reading the whole repo. Designed for multi-version software releases where each continuation prompt becomes the lead-in to the next session.
@@ -105,35 +120,33 @@ Per-section update strategy:
 
 Distinguished from the auto-memory system (incremental fact-saves as work happens) and from `anthropic-skills:consolidate-memory` (cross-tree prune/merge). This skill scopes to one project's memory file at milestone close. Uses `Edit` (never `Write`) so accumulated history isn't lost.
 
-### dictionary-pipeline
-
-LLM-side companion for the [`dictionary-pipeline`](https://github.com/inire/dictionary-pipeline) tool — a pandas-first data-prep pipeline that turns a messy CSV/Excel into a validated 3-tab Excel deliverable (cleaned data + data dictionary + automated-changes log). Generic across any tabular domain: consumer purchases, financial exports, surveys, inventory, CRM, healthcare records, IoT telemetry. The data dictionary is a YAML contract that drives schema enforcement, cleaning, derivation, and the dictionary tab in the deliverable.
-
-The pipeline itself runs as deterministic Python (Stages 0, 1, 4, 5, 7, 8, 9). This skill drives the four passes that *aren't* deterministic:
-
-| Pass | Pipeline mapping | What this skill does |
-|------|------------------|----------------------|
-| **1 — Pre-intake cleanup** | Pre-Stage 0 | Closes small gaps in the pipeline's `scrub.py` — currency-string sentinels (`' $- '`, `$0`, `-`), column-name whitespace, empty `Unnamed:` columns. Backed by a TDD-tested `prestage_helper.py`. Skip entirely if the export is already clean. |
-| **2 — Dictionary drafting** | Stages 2 + 3 | Drafts `dictionary.yaml` from the profile output, with a 13-question domain-agnostic checklist for ambiguous semantics (presence flags, scoring rubrics, currency periods, sentinel dates, parallel-column canonicality). Highest-leverage pause point in the workflow. |
-| **3 — Run + interpret** | Stages 4–9 | Wraps install / run / per-stage re-run with a post-run review checklist (schema revalidation, drift columns, transformation log, deliverable open) and a common-failure → fix table mapped to the most frequent `SchemaError` patterns |
-| **4 — Optional post-pipeline derivations** | Post-Stage 9 (custom) | Eight generic derivation patterns (presence flag, sentinel coalesce, ordinal map, days-since, picklist normalize, canonical domain, set-membership classify, composite score) for when YAML `derived_fields:` isn't expressive enough. Includes a transparent weighted-sum scoring framework and a Spearman/Kendall protocol for validating weights against any existing benchmark. |
-
-Distinguished from `data-dictionary` (which produces a Markdown/Excel dictionary deliverable, not a pandera contract). When the user wants only a dictionary, `data-dictionary` is the right skill — this one fires when they want the dictionary plus the validated 3-tab workbook plus optional derived columns. The two skills compose: `data-dictionary` governs *how* to think about each field; this skill governs *what* to emit so pandera can consume it.
-
-The skill also surfaces a set of cross-stream lessons (real data uncovers real bugs / don't bend the contract grammar — use Pass 4 / honest gaps beat phantom fixes / cross-dataset rollups need a separate taxonomy map / Excel header rows aren't auto-detected / workdir lives outside the repo) so future Claude sessions don't re-derive them. A 7-prompt manual trigger-correctness checklist lives at the bottom of the SKILL for verifying the description fires on the right requests after installation.
-
 ---
 
 ## Install
 
-Download the `.skill` file from [Releases](../../releases) or install by uploading the skill folder via **Claude.ai → Customize → Skills**.
-
-To install from source:
+Clone the repo, then mirror the skill folders you want into your Claude load path. On Linux/macOS the load path is `~/.claude/skills/`; on Windows it's `%USERPROFILE%\.claude\skills\` (e.g. `C:\Users\<you>\.claude\skills\`).
 
 ```bash
 git clone https://github.com/inire/claude-skills.git
-# Point your Claude client at any skill directory, e.g. skills/rimworld-log-check/
+cd claude-skills
 ```
+
+**For skills that ship with a `deploy.sh`** (currently only `dictionary-pipeline`):
+
+```bash
+cd skills/dictionary-pipeline && bash deploy.sh
+```
+
+**For everything else** — copy the skill folder manually:
+
+```bash
+cp -r skills/data-dictionary ~/.claude/skills/
+# repeat per skill
+```
+
+Or upload the folder via **Claude.ai → Customize → Skills** if you'd rather install through the UI.
+
+After installing, the skill should appear in the loaded skills list of any new Claude Code session. Restart your session to pick it up if it doesn't appear immediately.
 
 ---
 
