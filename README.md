@@ -101,6 +101,8 @@ Generates a structured handoff document for the next Claude Code session at the 
 
 Saves a markdown file to the project's `docs/` folder structured in 14 sections covering: TL;DR with the next session's first-move A/B/C decision, current branch state, just-shipped recap, next-version scope, architectural new ground, future-versions roadmap, standards to carry forward, open questions, key references, resolved historical issues, what NOT to do, and CLAUDE.md hooks.
 
+When the project has a design spec, implementation plan, or roadmap doc, the skill reads it and treats it as the authoritative source for the scope, roadmap, and open-questions sections — cross-checking the milestone framing against it and surfacing any disagreement as an open question, rather than reconstructing scope from session memory alone.
+
 Different from a generic README (which describes the project) and different from the auto-memory system (which saves incremental facts). This is a milestone-bookended handoff with a specific shape — written by the session that has full context, read by the session that has none.
 
 ### project-memory-update

@@ -68,15 +68,18 @@ git log --oneline -10
 git status --short
 git tag -l --sort=-v:refname | head -5
 git remote -v
-ls docs/ | grep -iE "(continuation|handoff|design|plan|phase)" | head -10
+ls docs/ | grep -iE "(continuation|handoff|design|spec|plan|phase|roadmap)" | head -10
 ```
 
 Also check:
 - `CLAUDE.md` in repo root for project-specific guidance
 - `~/.claude/projects/<colon-encoded-cwd>/memory/project_*.md` for the project's auto-memory file
 - The most recent existing handoff doc (if any) — read at least one prior continuation prompt to match style and section choices
+- **Design specs, implementation plans, and roadmap docs** (anything matched by the grep above, plus `SPEC.md` / `ROADMAP.md` / `docs/plan-*.md` and the like) — the project's *own* written statement of where it's going
 
 If any of these are missing, ask the user before guessing.
+
+**Specs and plans are the authoritative source, not your session memory.** If the project has a design spec, implementation plan, or roadmap doc, *read it* — and derive sections 6 (next-version scope), 7 (architectural new ground), 8 (roadmap), and 10 (open questions) from it. Your in-session context fills the gaps and adds what isn't written down yet, but where the two overlap, the spec leads. A handoff that quietly drifts from the canonical plan is worse than no handoff, because the next session will trust it.
 
 ### 2. Confirm the milestone framing
 
@@ -86,6 +89,8 @@ Examples of milestone framings:
 - `v0.4.0 SHIPPED, v0.5 T3 Archotech Buildings Next`
 - `Backend migration complete, frontend integration next`
 - `MVP shipped, beta scope next`
+
+**Cross-check the framing against the spec.** If a roadmap or spec exists, confirm the "next version" you're naming matches what that doc says comes next. If they disagree — the spec says X is next but this session worked toward Y — don't silently pick one. Surface the discrepancy as an item in the Open questions section so the next session resolves it with the user before committing to scope.
 
 ### 3. Compose the TL;DR's "first move" decision
 
